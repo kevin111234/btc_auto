@@ -1,0 +1,6 @@
+numpy 
+pandas 
+pyupbit 
+python-dotenv 
+requests
+tqdm
