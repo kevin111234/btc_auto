@@ -110,6 +110,7 @@ def real_time_trading(symbol='KRW-BTC', interval='minute5', count=200):
                     position = None
 
             # 5분 대기 (interval에 맞춰서 대기)
+            print("대기모드 전환")
             time.sleep(60)
 
         except Exception as e:
@@ -118,6 +119,7 @@ def real_time_trading(symbol='KRW-BTC', interval='minute5', count=200):
             time.sleep(10)
 
 # 실시간 매매 시작
+print("매매 시작")
 real_time_trading()
 
 #python realtrade.py
