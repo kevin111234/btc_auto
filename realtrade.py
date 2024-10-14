@@ -109,8 +109,11 @@ def real_time_trading(symbol='KRW-BTC', interval='minute5', count=200):
                     sell_crypto(current_price, position['quantity'])
                     position = None
 
+            else :
+                print("홀드")
+
             # 5분 대기 (interval에 맞춰서 대기)
-            print("대기모드 전환")
+            
             time.sleep(60)
 
         except Exception as e:
