@@ -126,6 +126,10 @@ def real_time_trading(symbol='KRW-BTC', interval='minute5', count=200):
                             'stop_price': avg_buy_price * (1 - stop_loss),
                             'take_price': avg_buy_price * (1 + take_profit)
                         }
+                    else:
+                        print("홀드")
+                else:
+                    print("홀드")
 
             # 매도 조건
             elif position is not None:
