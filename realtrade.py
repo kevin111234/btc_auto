@@ -149,5 +149,11 @@ def real_time_trading(symbol='KRW-BTC', interval='minute5', count=200):
 # 실시간 매매 시작
 print("매매 시작")
 balance = upbit.get_balance("KRW")
-print(f"시작잔고: {balance}")
+position_quantity = upbit.get_balance("BTC")
+avg_buy_price = upbit.get_avg_buy_price("BTC")
+print(f"""
+  시작잔고: {balance}
+  비트코인: {position_quantity}
+  평균단가: {avg_buy_price}
+  """)
 real_time_trading()
