@@ -138,6 +138,8 @@ def real_time_trading(symbol='KRW-BTC', interval='minute5', count=200):
                     # 손절 매도
                     sell_crypto(current_price, position['quantity'])
                     position = None
+                else:
+                    print("홀드")
             else:
                 print("홀드")
 
