@@ -55,20 +55,45 @@ def buy_crypto(current_price):
     balance = upbit.get_balance("KRW")  # 보유한 원화 잔고 확인
     if balance > 6000:  # 최소 주문 금액 6000원 이상일 때만 매수
         upbit.buy_market_order("KRW-BTC", balance * 0.9995)  # 수수료 고려하여 매수
-        message = f"매수 실행: 가격 {current_price} KRW, 금액 {balance} KRW"
+        time.sleep(10)  # 매수 후 잔고 업데이트를 위한 대기 시간 추가
+        position_quantity = upbit.get_balance("BTC")  # 매수 후 잔고 업데이트 확인
+        avg_buy_price = upbit.get_avg_buy_price("BTC")  # 매수 후 평균 매수 금액 확인
+        if position_quantity > 0:
+            message = f"매수 실행: 가격 {current_price} KRW, 금액 {balance} KRW, 수량 {position_quantity} BTC"
+        else:
+            message = f"매수 실패: 가격 {current_price} KRW, 금액 {balance} KRW"
         print(message)
         send_slack_message(message)
+        return position_quantity, avg_buy_price
+    return 0, 0
 
 # 매도 함수
 def sell_crypto(current_price, position_quantity):
     upbit.sell_market_order("KRW-BTC", position_quantity)
-    message = f"매도 실행: 가격 {current_price} KRW, 수량 {position_quantity} BTC"
+    time.sleep(10)  # 매도 후 잔고 업데이트를 위한 대기 시간 추가
+    remaining_quantity = upbit.get_balance("BTC")  # 매도 후 잔고 업데이트 확인
+    if remaining_quantity < position_quantity:
+        message = f"매도 실행: 가격 {current_price} KRW, 수량 {position_quantity} BTC"
+    else:
+        message = f"매도 실패: 가격 {current_price} KRW, 수량 {position_quantity} BTC"
     print(message)
     send_slack_message(message)
 
 # 실시간 매매 알고리즘
 def real_time_trading(symbol='KRW-BTC', interval='minute5', count=200):
-    position = None
+    # 기존에 보유한 비트코인 포지션 확인 및 설정
+    position_quantity = upbit.get_balance("BTC")
+    if position_quantity > 0:
+        avg_buy_price = upbit.get_avg_buy_price("BTC")
+        position = {
+            'quantity': position_quantity,
+            'price': avg_buy_price,
+            'stop_price': avg_buy_price * (1 - 0.1),  # 손절 비율 적용
+            'take_price': avg_buy_price * (1 + 0.05)  # 이익 실현 비율 적용
+        }
+    else:
+        position = None
+
     stop_loss = 0.1  # 손절 비율
     take_profit = 0.05  # 이익 실현 비율
 
@@ -90,13 +115,14 @@ def real_time_trading(symbol='KRW-BTC', interval='minute5', count=200):
             # 매수 조건
             if (latest['ema_short'] > latest['ema_long']) and (latest['rsi'] < 30) and (current_price <= latest['bb_lower']):
                 if position is None:
-                    buy_crypto(current_price)
-                    position = {
-                        'quantity': upbit.get_balance("BTC"),
-                        'price': current_price,
-                        'stop_price': current_price * (1 - stop_loss),
-                        'take_price': current_price * (1 + take_profit)
-                    }
+                    position_quantity, avg_buy_price = buy_crypto(current_price)
+                    if position_quantity > 0:
+                        position = {
+                            'quantity': position_quantity,
+                            'price': avg_buy_price,
+                            'stop_price': avg_buy_price * (1 - stop_loss),
+                            'take_price': avg_buy_price * (1 + take_profit)
+                        }
 
             # 매도 조건
             elif position is not None:
@@ -108,13 +134,12 @@ def real_time_trading(symbol='KRW-BTC', interval='minute5', count=200):
                     # 손절 매도
                     sell_crypto(current_price, position['quantity'])
                     position = None
-
             else :
+                time.sleep(10)
                 print("홀드")
 
             # 5분 대기 (interval에 맞춰서 대기)
-            
-            time.sleep(60)
+            time.sleep(290)
 
         except Exception as e:
             print(f"에러 발생: {e}")
@@ -126,5 +151,3 @@ print("매매 시작")
 balance = upbit.get_balance("KRW")
 print(f"시작잔고: {balance}")
 real_time_trading()
-
-#python realtrade.py
