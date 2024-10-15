@@ -66,6 +66,9 @@ def buy_crypto(current_price):
         send_slack_message(message)
         return position_quantity, avg_buy_price
     else: 
+        message = f"매수 신호 감지되었으나 잔고 부족으로 매수하지 않음: 가격 {current_price} KRW, 금액 {balance} KRW"
+        print(message)
+        send_slack_message(message)
         return 0, 0
 
 # 매도 함수
@@ -117,19 +120,14 @@ def real_time_trading(symbol='KRW-BTC', interval='minute5', count=200):
 
             # 매수 조건
             if (latest['ema_short'] > latest['ema_long']) and (latest['rsi'] < 30) and (current_price <= latest['bb_lower']):
-                if position is None:
-                    position_quantity, avg_buy_price = buy_crypto(current_price)
-                    if position_quantity > 0:
-                        position = {
-                            'quantity': position_quantity,
-                            'price': avg_buy_price,
-                            'stop_price': avg_buy_price * (1 - stop_loss),
-                            'take_price': avg_buy_price * (1 + take_profit)
-                        }
-                    else:
-                        print("홀드")
-                else:
-                    print("홀드")
+                position_quantity, avg_buy_price = buy_crypto(current_price)
+                if position_quantity > 0:
+                    position = {
+                        'quantity': position_quantity,
+                        'price': avg_buy_price,
+                        'stop_price': avg_buy_price * (1 - stop_loss),
+                        'take_price': avg_buy_price * (1 + take_profit)
+                    }
 
             # 매도 조건
             elif position is not None:
@@ -152,7 +150,7 @@ def real_time_trading(symbol='KRW-BTC', interval='minute5', count=200):
         except Exception as e:
             print(f"에러 발생: {e}")
             send_slack_message(f"에러 발생: {e}")
-            time.sleep(10)
+            time.sleep(60)
 
 # 실시간 매매 시작
 print("매매 준비")
