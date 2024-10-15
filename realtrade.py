@@ -56,7 +56,7 @@ def buy_crypto(current_price):
     if balance > 6000:  # 최소 주문 금액 6000원 이상일 때만 매수
         upbit.buy_market_order("KRW-BTC", balance * 0.9995)  # 수수료 고려하여 매수
         time.sleep(10)  # 매수 후 잔고 업데이트를 위한 대기 시간 추가
-        position_quantity = upbit.get_balance("BTC")  # 매수 후 잔고 업데이트 확인
+        position_quantity = upbit.get_balance("BTC") or 0  # 매수 후 잔고 업데이트 확인
         avg_buy_price = upbit.get_avg_buy_price("BTC")  # 매수 후 평균 매수 금액 확인
         if position_quantity > 0:
             message = f"매수 실행: 가격 {current_price} KRW, 금액 {balance} KRW, 수량 {position_quantity} BTC"
@@ -71,7 +71,7 @@ def buy_crypto(current_price):
 def sell_crypto(current_price, position_quantity):
     upbit.sell_market_order("KRW-BTC", position_quantity)
     time.sleep(10)  # 매도 후 잔고 업데이트를 위한 대기 시간 추가
-    remaining_quantity = upbit.get_balance("BTC")  # 매도 후 잔고 업데이트 확인
+    remaining_quantity = upbit.get_balance("BTC") or 0  # 매도 후 잔고 업데이트 확인
     if remaining_quantity < position_quantity:
         message = f"매도 실행: 가격 {current_price} KRW, 수량 {position_quantity} BTC"
     else:
@@ -82,7 +82,7 @@ def sell_crypto(current_price, position_quantity):
 # 실시간 매매 알고리즘
 def real_time_trading(symbol='KRW-BTC', interval='minute5', count=200):
     # 기존에 보유한 비트코인 포지션 확인 및 설정
-    position_quantity = upbit.get_balance("BTC")
+    position_quantity = upbit.get_balance("BTC") or 0
     if position_quantity > 0:
         avg_buy_price = upbit.get_avg_buy_price("BTC")
         position = {
@@ -134,8 +134,7 @@ def real_time_trading(symbol='KRW-BTC', interval='minute5', count=200):
                     # 손절 매도
                     sell_crypto(current_price, position['quantity'])
                     position = None
-            else :
-                time.sleep(10)
+            else:
                 print("홀드")
 
             # 5분 대기 (interval에 맞춰서 대기)
@@ -149,7 +148,7 @@ def real_time_trading(symbol='KRW-BTC', interval='minute5', count=200):
 # 실시간 매매 시작
 print("매매 시작")
 balance = upbit.get_balance("KRW")
-position_quantity = upbit.get_balance("BTC")
+position_quantity = upbit.get_balance("BTC") or 0
 avg_buy_price = upbit.get_avg_buy_price("BTC")
 print(f"""
   시작잔고: {balance}
