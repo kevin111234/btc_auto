@@ -114,7 +114,6 @@ def real_time_trading(symbol='KRW-BTC', interval='minute5', count=200):
 
             # 가장 최신 데이터 행 가져오기
             latest = df.iloc[-1]
-            print("데이터 업데이트 완료")
 
             # 매수 조건
             if (latest['ema_short'] > latest['ema_long']) and (latest['rsi'] < 30) and (current_price <= latest['bb_lower']):
