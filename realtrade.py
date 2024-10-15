@@ -144,7 +144,7 @@ def real_time_trading(symbol='KRW-BTC', interval='minute5', count=200):
                 print("홀드")
 
             # 5분 대기 (interval에 맞춰서 대기)
-            time.sleep(290)
+            time.sleep(50)
 
         except Exception as e:
             print(f"에러 발생: {e}")
