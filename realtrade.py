@@ -65,7 +65,8 @@ def buy_crypto(current_price):
         print(message)
         send_slack_message(message)
         return position_quantity, avg_buy_price
-    return 0, 0
+    else: 
+        return 0, 0
 
 # 매도 함수
 def sell_crypto(current_price, position_quantity):
@@ -81,6 +82,7 @@ def sell_crypto(current_price, position_quantity):
 
 # 실시간 매매 알고리즘
 def real_time_trading(symbol='KRW-BTC', interval='minute5', count=200):
+    print("매매 시작")
     # 기존에 보유한 비트코인 포지션 확인 및 설정
     position_quantity = upbit.get_balance("BTC") or 0
     if position_quantity > 0:
@@ -146,7 +148,7 @@ def real_time_trading(symbol='KRW-BTC', interval='minute5', count=200):
             time.sleep(10)
 
 # 실시간 매매 시작
-print("매매 시작")
+print("매매 준비")
 balance = upbit.get_balance("KRW")
 position_quantity = upbit.get_balance("BTC") or 0
 avg_buy_price = upbit.get_avg_buy_price("BTC")
