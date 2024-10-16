@@ -121,6 +121,10 @@ def real_time_trading(symbol='KRW-BTC', interval='minute5', count=200):
             # 매수 조건
             if (latest['ema_short'] > latest['ema_long']) and (latest['rsi'] < 30) and (current_price <= latest['bb_lower']):
                 position_quantity, avg_buy_price = buy_crypto(current_price)
+                message=f"기술적 지표에 따른 매수 실행: {current_price}"
+                print(message)
+                send_slack_message(message)
+                position = None
                 if position_quantity > 0:
                     position = {
                         'quantity': position_quantity,
@@ -131,13 +135,26 @@ def real_time_trading(symbol='KRW-BTC', interval='minute5', count=200):
 
             # 매도 조건
             elif position is not None:
-                if current_price >= position['take_price']:
+                # 매도 조건: 이익 실현 또는 기술적 지표 반전
+                if ((latest['ema_short'] < latest['ema_long']) and (latest['rsi'] > 70)):
+                    sell_crypto(current_price, position['quantity'])
+                    message=f"기술적 지표에 따른 매도 실행: {current_price}"
+                    print(message)
+                    send_slack_message(message)
+                    position = None
+                elif (current_price >= position['take_price']):
                     # 이익 실현 매도
                     sell_crypto(current_price, position['quantity'])
+                    message=f"이익실현 매도 실행: {current_price}"
+                    print(message)
+                    send_slack_message(message)
                     position = None
-                elif current_price <= position['stop_price']:
+                elif current_price <= position['stop_price'] or ((latest['ema_short'] < latest['ema_long']) and (latest['rsi'] > 70)):
                     # 손절 매도
                     sell_crypto(current_price, position['quantity'])
+                    message=f"손절 매도 실행: {current_price}"
+                    print(message)
+                    send_slack_message(message)
                     position = None
                 else:
                     print("홀드")
