@@ -101,7 +101,7 @@ def real_time_trading(symbol='KRW-BTC', interval='minute5', count=200):
     print(f"포지션 정보: {position}")
 
     stop_loss = 0.1  # 손절 비율
-    take_profit = 0.05  # 이익 실현 비율
+    take_profit = 0.02  # 이익 실현 비율
 
     while True:
         try:
