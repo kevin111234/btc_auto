@@ -162,8 +162,8 @@ ema_short_candidates = [10, 15]
 ema_long_candidates = [20, 30]
 rsi_period_candidates = [14, 21]
 bb_period_candidates = [10, 20]
-stop_loss_candidates = [0.01, 0.1]
-take_profit_candidates = [0.02, 0.2]
+stop_loss_candidates = [0.1]
+take_profit_candidates = [0.02]
 
 # 그리드 서치 실행
 best_params, best_results = grid_search(
