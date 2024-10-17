@@ -53,7 +53,7 @@ def compute_bollinger_bands(series, period, num_std=2):
 # 매수 함수
 def buy_crypto(current_price):
     balance = upbit.get_balance("KRW")  # 보유한 원화 잔고 확인
-    if balance > 6000:  # 최소 주문 금액 6000원 이상일 때만 매수
+    if balance and balance > 6000:  # 최소 주문 금액 6000원 이상일 때만 매수
         upbit.buy_market_order("KRW-BTC", balance * 0.9995)  # 수수료 고려하여 매수
         time.sleep(10)  # 매수 후 잔고 업데이트를 위한 대기 시간 추가
         position_quantity = upbit.get_balance("BTC") or 0  # 매수 후 잔고 업데이트 확인
@@ -73,15 +73,16 @@ def buy_crypto(current_price):
 
 # 매도 함수
 def sell_crypto(current_price, position_quantity):
-    upbit.sell_market_order("KRW-BTC", position_quantity)
-    time.sleep(10)  # 매도 후 잔고 업데이트를 위한 대기 시간 추가
-    remaining_quantity = upbit.get_balance("BTC") or 0  # 매도 후 잔고 업데이트 확인
-    if remaining_quantity < position_quantity:
-        message = f"매도 실행: 가격 {current_price} KRW, 수량 {position_quantity} BTC"
-    else:
-        message = f"매도 실패: 가격 {current_price} KRW, 수량 {position_quantity} BTC"
-    print(message)
-    send_slack_message(message)
+    if position_quantity and position_quantity > 0:
+        upbit.sell_market_order("KRW-BTC", position_quantity)
+        time.sleep(10)  # 매도 후 잔고 업데이트를 위한 대기 시간 추가
+        remaining_quantity = upbit.get_balance("BTC") or 0  # 매도 후 잔고 업데이트 확인
+        if remaining_quantity < position_quantity:
+            message = f"매도 실행: 가격 {current_price} KRW, 수량 {position_quantity} BTC"
+        else:
+            message = f"매도 실패: 가격 {current_price} KRW, 수량 {position_quantity} BTC"
+        print(message)
+        send_slack_message(message)
 
 # 실시간 매매 알고리즘
 def real_time_trading(symbol='KRW-BTC', interval='minute5', count=200):
@@ -108,6 +109,11 @@ def real_time_trading(symbol='KRW-BTC', interval='minute5', count=200):
             # 최신 데이터 수집
             df = pyupbit.get_ohlcv(symbol, interval=interval, count=count)
             current_price = pyupbit.get_current_price(symbol)
+
+            if df is None or current_price is None:
+                print("데이터 수집 실패, 다음 루프로 재시도합니다.")
+                time.sleep(60)
+                continue
 
             # 지표 계산
             df['ema_short'] = df['close'].ewm(span=10, adjust=False).mean()
@@ -165,8 +171,9 @@ def real_time_trading(symbol='KRW-BTC', interval='minute5', count=200):
             time.sleep(50)
 
         except Exception as e:
-            print(f"에러 발생: {e}")
-            send_slack_message(f"에러 발생: {e}")
+            import traceback
+            print(f"에러 발생: {e}, 라인 번호: {traceback.format_exc()}")
+            send_slack_message(f"에러 발생: {e}, 라인 번호: {traceback.format_exc()}")
             time.sleep(60)
 
 # 실시간 매매 시작
