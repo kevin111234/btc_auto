@@ -17,6 +17,7 @@ def get_data(symbol='KRW-BTC', interval='minute1', count=20000000):
                 df_list.append(df_partial)
             pbar.update(partial_count)
             time.sleep(0.1)  # API 호출 간 간격을 두어 서버 부담을 줄임
+            print(f"{start}번째 데이터 로딩중...")
     df = pd.concat(df_list).reset_index()
     return df
 
@@ -155,6 +156,7 @@ def grid_search(data, ema_short_range, ema_long_range, rsi_period_range, bb_peri
         # 백테스트 실행
         results, portfolio_value, mdd, total_trades, win_rate, total_return = backtest_strategy(
             data, ema_short, ema_long, rsi_period, bb_period, stop_loss, take_profit, weights)
+        print("백테스팅 실행중...")
 
         if portfolio_value > best_portfolio_value:
             best_portfolio_value = portfolio_value
