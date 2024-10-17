@@ -6,7 +6,7 @@ from tqdm import tqdm
 import time
 
 # 1. 데이터 로드 (PyUpbit API로 1분 봉 데이터 수집)
-def get_data(symbol='KRW-BTC', interval='minute5', count=200000):
+def get_data(symbol='KRW-BTC', interval='minute1', count=20000000):
     step = max(1, count // 100)
     df_list = []
     with tqdm(total=count, desc="데이터 로드 중") as pbar:
@@ -135,16 +135,16 @@ def backtest_strategy(data, ema_short, ema_long, rsi_period, bb_period, stop_los
     return data, total_asset, max_drawdown, total_trades, win_rate, total_return
 
 # 그리드 서치 함수
-def grid_search(data, ema_short_candidates, ema_long_candidates, rsi_period_candidates, bb_period_candidates, stop_loss_candidates, take_profit_candidates, ema_weight_candidates, rsi_weight_candidates, bollinger_weight_candidates):
+def grid_search(data, ema_short_range, ema_long_range, rsi_period_range, bb_period_range, stop_loss_range, take_profit_range, ema_weight_range, rsi_weight_range, bollinger_weight_range):
     best_portfolio_value = 0  # 초기 자본 값으로 초기화
     best_params = None
     best_results = None
 
-    total_combinations = len(ema_short_candidates) * len(ema_long_candidates) * len(rsi_period_candidates) * len(bb_period_candidates) * len(stop_loss_candidates) * len(take_profit_candidates) * len(ema_weight_candidates) * len(rsi_weight_candidates) * len(bollinger_weight_candidates)
+    total_combinations = len(ema_short_range) * len(ema_long_range) * len(rsi_period_range) * len(bb_period_range) * len(stop_loss_range) * len(take_profit_range) * len(ema_weight_range) * len(rsi_weight_range) * len(bollinger_weight_range)
     progress_bar = tqdm(total=total_combinations, desc="그리드 서치 진행 중")
 
     for ema_short, ema_long, rsi_period, bb_period, stop_loss, take_profit, ema_weight, rsi_weight, bollinger_weight in product(
-            ema_short_candidates, ema_long_candidates, rsi_period_candidates, bb_period_candidates, stop_loss_candidates, take_profit_candidates, ema_weight_candidates, rsi_weight_candidates, bollinger_weight_candidates):
+            ema_short_range, ema_long_range, rsi_period_range, bb_period_range, stop_loss_range, take_profit_range, ema_weight_range, rsi_weight_range, bollinger_weight_range):
 
         weights = {
             'ema': ema_weight,
@@ -179,29 +179,29 @@ def grid_search(data, ema_short_candidates, ema_long_candidates, rsi_period_cand
     progress_bar.close()
     return best_params, best_results
 
-# 그리드 서치 파라미터 설정
-ema_short_candidates = [10, 15]
-ema_long_candidates = [20, 30]
-rsi_period_candidates = [14, 21]
-bb_period_candidates = [10, 20]
-stop_loss_candidates = [0.1]
-take_profit_candidates = [0.02]
-ema_weight_candidates = [1.0, 1.5, 2.0]
-rsi_weight_candidates = [1.0, 1.5, 2.0]
-bollinger_weight_candidates = [1.0, 1.5, 2.0]
+# 그리드 서치 파라미터 설정 (범위로 변경)
+ema_short_range = range(10, 16, 1)
+ema_long_range = range(20, 31, 1)
+rsi_period_range = range(14, 22, 1)
+bb_period_range = range(10, 21, 1)
+stop_loss_range = np.linspace(0.01, 0.1, 10)
+take_profit_range = np.linspace(0.02, 0.2, 10)
+ema_weight_range = range(1, 3, 1)
+rsi_weight_range = range(1, 3, 1)
+bollinger_weight_range = range(1, 3, 1)
 
 # 그리드 서치 실행
 best_params, best_results = grid_search(
     data,
-    ema_short_candidates,
-    ema_long_candidates,
-    rsi_period_candidates,
-    bb_period_candidates,
-    stop_loss_candidates,
-    take_profit_candidates,
-    ema_weight_candidates,
-    rsi_weight_candidates,
-    bollinger_weight_candidates
+    ema_short_range,
+    ema_long_range,
+    rsi_period_range,
+    bb_period_range,
+    stop_loss_range,
+    take_profit_range,
+    ema_weight_range,
+    rsi_weight_range,
+    bollinger_weight_range
 )
 
 # 결과 출력
