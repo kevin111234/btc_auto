@@ -111,6 +111,8 @@ def real_time_trading(symbol='KRW-BTC', interval='minute5', count=200):
             current_price = pyupbit.get_current_price(symbol)
 
             if df is None or current_price is None:
+                print(df)
+                print(current_price)
                 print("데이터 수집 실패, 다음 루프로 재시도합니다.")
                 time.sleep(60)
                 continue
