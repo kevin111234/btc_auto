@@ -111,11 +111,11 @@ def real_time_trading(symbol='KRW-BTC', interval='minute5', count=200):
             current_price = pyupbit.get_current_price(symbol)
 
             if df is None or current_price is None:
-                print(df)
-                print(current_price)
-                print("데이터 수집 실패, 다음 루프로 재시도합니다.")
-                time.sleep(60)
-                continue
+              error_message = f"데이터 수집 실패: df={df}, current_price={current_price}. API 호출 실패로 다음 루프로 재시도합니다."
+              print(error_message)
+              send_slack_message(error_message)
+              time.sleep(10)
+              continue
 
             # 지표 계산
             df['ema_short'] = df['close'].ewm(span=10, adjust=False).mean()
