@@ -116,7 +116,8 @@ def real_time_trading(symbol='KRW-BTC', interval='minute5', count=200):
               send_slack_message(error_message)
               time.sleep(10)
               continue
-
+            else:
+                print("데이터 수집 성공")
             # 지표 계산
             df['ema_short'] = df['close'].ewm(span=10, adjust=False).mean()
             df['ema_long'] = df['close'].ewm(span=20, adjust=False).mean()
