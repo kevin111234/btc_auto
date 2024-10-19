@@ -168,9 +168,10 @@ def real_time_trading(symbol='KRW-BTC', interval='minute5', count=200):
                     print("매도 진행안함")
             else:
                 print("매수 진행안함")
+                time.sleep(10)
 
             # 5분 대기 (interval에 맞춰서 대기)
-            time.sleep(50)
+            time.sleep(140)
 
         except Exception as e:
             import traceback
