@@ -165,9 +165,9 @@ def real_time_trading(symbol='KRW-BTC', interval='minute5', count=200):
                     send_slack_message(message)
                     position = None
                 else:
-                    print("홀드")
+                    print("매도 진행안함")
             else:
-                print("홀드")
+                print("매수 진행안함")
 
             # 5분 대기 (interval에 맞춰서 대기)
             time.sleep(50)

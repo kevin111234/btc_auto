@@ -4,9 +4,31 @@ from itertools import product
 import pyupbit
 from tqdm import tqdm
 import time
+import requests
+import os
+from dotenv import load_dotenv
 
-# 1. 데이터 로드 (PyUpbit API로 1분 봉 데이터 수집)
-def get_data(symbol='KRW-BTC', interval='minute1', count=20000000):
+# 0. slack 메시지 전송 함수 작성
+load_dotenv()
+SLACK_API_TOKEN = os.getenv("SLACK_API_TOKEN")
+SLACK_CHANNEL_ID = os.getenv("SLACK_CHANNEL_ID")
+
+def send_slack_message(message):
+    url = "https://slack.com/api/chat.postMessage"
+    headers = {
+        "Authorization": f"Bearer {SLACK_API_TOKEN}",
+        "Content-Type": "application/json"
+    }
+    data = {
+        "channel": SLACK_CHANNEL_ID,
+        "text": message
+    }
+    response = requests.post(url, headers=headers, json=data)
+    if response.status_code != 200:
+        print(f"슬랙 메시지 전송 실패: {response.status_code}, {response.text}")
+
+# 1. 데이터 로드 (PyUpbit API로 5분 봉 데이터 수집)
+def get_data(symbol='KRW-BTC', interval='minute1', count=2000000):
     step = max(1, count // 100)
     df_list = []
     with tqdm(total=count, desc="데이터 로드 중") as pbar:
@@ -17,7 +39,6 @@ def get_data(symbol='KRW-BTC', interval='minute1', count=20000000):
                 df_list.append(df_partial)
             pbar.update(partial_count)
             time.sleep(0.1)  # API 호출 간 간격을 두어 서버 부담을 줄임
-            print(f"{start}번째 데이터 로딩중...")
     df = pd.concat(df_list).reset_index()
     return df
 
@@ -136,16 +157,16 @@ def backtest_strategy(data, ema_short, ema_long, rsi_period, bb_period, stop_los
     return data, total_asset, max_drawdown, total_trades, win_rate, total_return
 
 # 그리드 서치 함수
-def grid_search(data, ema_short_range, ema_long_range, rsi_period_range, bb_period_range, stop_loss_range, take_profit_range, ema_weight_range, rsi_weight_range, bollinger_weight_range):
+def grid_search(data, ema_short_candidates, ema_long_candidates, rsi_period_candidates, bb_period_candidates, stop_loss_candidates, take_profit_candidates, ema_weight_candidates, rsi_weight_candidates, bollinger_weight_candidates):
     best_portfolio_value = 0  # 초기 자본 값으로 초기화
     best_params = None
     best_results = None
 
-    total_combinations = len(ema_short_range) * len(ema_long_range) * len(rsi_period_range) * len(bb_period_range) * len(stop_loss_range) * len(take_profit_range) * len(ema_weight_range) * len(rsi_weight_range) * len(bollinger_weight_range)
+    total_combinations = len(ema_short_candidates) * len(ema_long_candidates) * len(rsi_period_candidates) * len(bb_period_candidates) * len(stop_loss_candidates) * len(take_profit_candidates) * len(ema_weight_candidates) * len(rsi_weight_candidates) * len(bollinger_weight_candidates)
     progress_bar = tqdm(total=total_combinations, desc="그리드 서치 진행 중")
 
     for ema_short, ema_long, rsi_period, bb_period, stop_loss, take_profit, ema_weight, rsi_weight, bollinger_weight in product(
-            ema_short_range, ema_long_range, rsi_period_range, bb_period_range, stop_loss_range, take_profit_range, ema_weight_range, rsi_weight_range, bollinger_weight_range):
+            ema_short_candidates, ema_long_candidates, rsi_period_candidates, bb_period_candidates, stop_loss_candidates, take_profit_candidates, ema_weight_candidates, rsi_weight_candidates, bollinger_weight_candidates):
 
         weights = {
             'ema': ema_weight,
@@ -156,7 +177,6 @@ def grid_search(data, ema_short_range, ema_long_range, rsi_period_range, bb_peri
         # 백테스트 실행
         results, portfolio_value, mdd, total_trades, win_rate, total_return = backtest_strategy(
             data, ema_short, ema_long, rsi_period, bb_period, stop_loss, take_profit, weights)
-        print("백테스팅 실행중...")
 
         if portfolio_value > best_portfolio_value:
             best_portfolio_value = portfolio_value
@@ -181,29 +201,39 @@ def grid_search(data, ema_short_range, ema_long_range, rsi_period_range, bb_peri
     progress_bar.close()
     return best_params, best_results
 
-# 그리드 서치 파라미터 설정 (범위로 변경)
-ema_short_range = range(10, 16, 1)
-ema_long_range = range(20, 31, 1)
-rsi_period_range = range(14, 22, 1)
-bb_period_range = range(10, 21, 1)
-stop_loss_range = np.linspace(0.01, 0.1, 10)
-take_profit_range = np.linspace(0.02, 0.2, 10)
-ema_weight_range = range(1, 3, 1)
-rsi_weight_range = range(1, 3, 1)
-bollinger_weight_range = range(1, 3, 1)
+# 그리드 서치 파라미터 설정
+# ema_short_candidates = [10, 15]
+# ema_long_candidates = [20, 30]
+# rsi_period_candidates = [14, 21]
+# bb_period_candidates = [10, 20]
+# stop_loss_candidates = [0.01, 0.05, 0.1]
+# take_profit_candidates = [0.02, 0.01, 0.03]
+# ema_weight_candidates = [1, 1.5, 2]
+# rsi_weight_candidates = [1, 1.5, 2]
+# bollinger_weight_candidates = [1, 1.5, 2]
+
+ema_short_candidates = range(10, 16, 1)
+ema_long_candidates = range(20, 31, 1)
+rsi_period_candidates = range(14, 22, 1)
+bb_period_candidates = range(10, 21, 1)
+stop_loss_candidates = np.linspace(0.01, 0.1, 10)
+take_profit_candidates = np.linspace(0.02, 0.2, 10)
+ema_weight_candidates = range(1, 3, 1)
+rsi_weight_candidates = range(1, 3, 1)
+bollinger_weight_candidates = range(1, 3, 1)
 
 # 그리드 서치 실행
 best_params, best_results = grid_search(
     data,
-    ema_short_range,
-    ema_long_range,
-    rsi_period_range,
-    bb_period_range,
-    stop_loss_range,
-    take_profit_range,
-    ema_weight_range,
-    rsi_weight_range,
-    bollinger_weight_range
+    ema_short_candidates,
+    ema_long_candidates,
+    rsi_period_candidates,
+    bb_period_candidates,
+    stop_loss_candidates,
+    take_profit_candidates,
+    ema_weight_candidates,
+    rsi_weight_candidates,
+    bollinger_weight_candidates
 )
 
 # 결과 출력
@@ -213,3 +243,14 @@ print(f"최대 낙폭(MDD): {best_results['mdd']}%")
 print(f"총 거래 횟수: {best_results['total_trades']}")
 print(f"승률: {best_results['win_rate']}%")
 print(f"총 수익률: {best_results['total_return']}%")
+
+# slack에 전송
+message = f"""
+최적의 파라미터 조합: {best_params}
+최종 포트폴리오 가치: {best_results['portfolio_value']}
+최대 낙폭(MDD): {best_results['mdd']}%
+총 거래 횟수: {best_results['total_trades']}
+승률: {best_results['win_rate']}%
+총 수익률: {best_results['total_return']}%
+"""
+send_slack_message(message)
