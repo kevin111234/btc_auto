@@ -33,6 +33,7 @@ def get_data(symbol='KRW-BTC', interval='minute5', count=200000):
     df_list = []
     with tqdm(total=count, desc="데이터 로드 중") as pbar:
         for start in range(0, count, step):
+            print("데이터 로드 중...")
             partial_count = min(step, count - start)
             df_partial = pyupbit.get_ohlcv(symbol, interval=interval, count=partial_count)
             if df_partial is not None:
@@ -187,6 +188,7 @@ def grid_search(data):
         }
 
         # 백테스트 실행
+        print("백테스트 실행!")
         results, portfolio_value, mdd, total_trades, win_rate, total_return = backtest_strategy(
             data.copy(), ema_short, ema_long, rsi_period, bb_period, stop_loss, take_profit, weights)
 
