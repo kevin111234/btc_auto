@@ -119,8 +119,8 @@ def real_time_trading(symbol='KRW-BTC', interval='minute5', count=200):
             else:
                 print("데이터 수집 성공")
             # 지표 계산
-            df['ema_short'] = df['close'].ewm(span=10, adjust=False).mean()
-            df['ema_long'] = df['close'].ewm(span=20, adjust=False).mean()
+#            df['ema_short'] = df['close'].ewm(span=10, adjust=False).mean()
+#            df['ema_long'] = df['close'].ewm(span=20, adjust=False).mean()
             df['rsi'] = compute_rsi(df['close'], 14)
             df['bb_upper'], df['bb_lower'] = compute_bollinger_bands(df['close'], 10)
 
@@ -128,7 +128,7 @@ def real_time_trading(symbol='KRW-BTC', interval='minute5', count=200):
             latest = df.iloc[-1]
 
             # 매수 조건
-            if (latest['ema_short'] > latest['ema_long']) and (latest['rsi'] < 30) and (current_price <= latest['bb_lower']):
+            if (latest['rsi'] < 30) and (current_price <= latest['bb_lower']):
                 position_quantity, avg_buy_price = buy_crypto(current_price)
                 message=f"기술적 지표에 따른 매수 실행: {current_price}"
                 print(message)
@@ -145,7 +145,7 @@ def real_time_trading(symbol='KRW-BTC', interval='minute5', count=200):
             # 매도 조건
             elif position is not None:
                 # 매도 조건: 이익 실현 또는 기술적 지표 반전
-                if ((latest['ema_short'] < latest['ema_long']) and (latest['rsi'] > 70)):
+                if ((current_price > latest['bb_upper']) and (latest['rsi'] > 70)):
                     sell_crypto(current_price, position['quantity'])
                     message=f"기술적 지표에 따른 매도 실행: {current_price}"
                     print(message)
