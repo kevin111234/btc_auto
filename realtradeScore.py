@@ -90,7 +90,7 @@ def sell_crypto(current_price, position_quantity):
 def real_time_trading(params):
     print("매매 시작")
     symbol = params.get('symbol', 'KRW-BTC')
-    interval = params.get('interval', 'minute5')
+    interval = params.get('interval', 'minute1')
     count = params.get('count', 200)
     ema_short = params.get('ema_short', 10)
     ema_long = params.get('ema_long', 20)
@@ -181,7 +181,7 @@ def real_time_trading(params):
                 time.sleep(10)
 
             # 대기 시간 설정 (interval에 맞춰서 대기)
-            time.sleep(140)
+            time.sleep(20)
 
         except Exception as e:
             import traceback
@@ -192,7 +192,7 @@ def real_time_trading(params):
 # 실시간 매매 시작 (사용자가 원하는 파라미터 설정 가능)
 params = {
     'symbol': 'KRW-BTC',
-    'interval': 'minute5',
+    'interval': 'minute1',
     'count': 200,
     'ema_short': 10,
     'ema_long': 20,
