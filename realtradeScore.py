@@ -144,6 +144,7 @@ def real_time_trading(params):
                 buy_score += weights['rsi']
             if current_price <= latest['bb_lower']:
                 buy_score += weights['bollinger']
+            print(f"buy_score = {buy_score}")
 
             # 매도 점수 계산
             sell_score = 0
@@ -153,6 +154,7 @@ def real_time_trading(params):
                 sell_score += weights['rsi']
             if current_price >= latest['bb_upper']:
                 sell_score += weights['bollinger']
+            print(f"sell_score = {sell_score}")
 
             # 매수 조건
             if buy_score >= sum(weights.values()) * 0.6 and position is None:
