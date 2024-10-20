@@ -170,7 +170,7 @@ def real_time_trading(params):
 
             # 매도 조건
             elif position is not None:
-                if sell_score >= sum(weights.values()) * 0.6:
+                if sell_score >= sum(weights.values()) * 0.6 and current_price > avg_buy_price + avg_buy_price*0.002:
                   sell_crypto(current_price, position['quantity'])
                   position = None
                 elif (current_price >= position['take_price']):
