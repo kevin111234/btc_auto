@@ -173,6 +173,20 @@ def real_time_trading(params):
                 if sell_score >= sum(weights.values()) * 0.6:
                   sell_crypto(current_price, position['quantity'])
                   position = None
+                elif (current_price >= position['take_price']):
+                    # 이익 실현 매도
+                    sell_crypto(current_price, position['quantity'])
+                    message=f"이익실현 매도 실행: {current_price}"
+                    print(message)
+                    send_slack_message(message)
+                    position = None
+                elif current_price <= position['stop_price'] or ((latest['ema_short'] < latest['ema_long']) and (latest['rsi'] > 70)):
+                    # 손절 매도
+                    sell_crypto(current_price, position['quantity'])
+                    message=f"손절 매도 실행: {current_price}"
+                    print(message)
+                    send_slack_message(message)
+                    position = None
                 else:
                     print("매도 진행안함")
                     time.sleep(10)
