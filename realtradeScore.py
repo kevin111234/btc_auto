@@ -211,5 +211,14 @@ print(f"""
   평균단가: {avg_buy_price}
   """)
 print(f"""현재 설정값 안내
-  {params}""")
+    symbol = {params.get('symbol')}
+    interval = {params.get('interval')}
+    count = {params.get('count')}
+    ema_short = {params.get('ema_short')}
+    ema_long = {params.get('ema_long')}
+    rsi_period = {params.get('rsi_period')}
+    bb_period = {params.get('bb_period')}
+    stop_loss = {params.get('stop_loss')}
+    take_profit = {params.get('take_profit')}
+    weights = {params.get('weights')}""")
 real_time_trading(params)
