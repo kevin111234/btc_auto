@@ -33,10 +33,16 @@ def send_slack_message(message):
 def get_data(ticker, interval='minute1', count=100):
     """
     주어진 티커와 간격에 대한 OHLCV 데이터를 가져옵니다 (기본적으로 100개의 데이터).
-    진행도를 tqdm으로 표시합니다.
     """
     data = None
-    data = pyupbit.get_ohlcv(ticker, interval=interval, count=count)
+    for _ in tqdm(range(1), desc="데이터 로딩 중..."):
+        while True:
+          try:
+              data = pyupbit.get_ohlcv(ticker, interval=interval, count=count)
+              if data is not None:
+                  break
+          except Exception as e:
+              print(f"데이터 로딩 실패: {e}")
     return data
 
 # 볼린저 밴드를 계산하는 함수
@@ -215,4 +221,5 @@ def get_balance():
 if __name__ == "__main__":
     # 백테스팅 실행
     historical_data = get_data("KRW-BTC", interval='minute1', count=200000)
+    print(historical_data)
     backtest(historical_data)
