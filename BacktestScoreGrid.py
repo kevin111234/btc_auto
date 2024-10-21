@@ -36,8 +36,7 @@ def get_data(ticker, interval='minute1', count=100):
     진행도를 tqdm으로 표시합니다.
     """
     data = None
-    for _ in tqdm(range(1), desc="데이터 로딩 중..."):
-        data = pyupbit.get_ohlcv(ticker, interval=interval, count=count)
+    data = pyupbit.get_ohlcv(ticker, interval=interval, count=count)
     return data
 
 # 볼린저 밴드를 계산하는 함수
