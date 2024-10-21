@@ -123,6 +123,8 @@ def make_trade_decision(df, bollinger_weight=0.25, rsi_weight=0.25, cci_weight=0
         score += stochastic_weight  # 과매도 상태
     elif k_percent.iloc[-1] > 80:
         score -= stochastic_weight  # 과매수 상태
+    
+    print(f"{score}")
 
     # 점수를 기반으로 매매 결정
     try:
@@ -137,7 +139,7 @@ def make_trade_decision(df, bollinger_weight=0.25, rsi_weight=0.25, cci_weight=0
             balances = get_balance()
             krw_balance = float(next(b['balance'] for b in balances if b['currency'] == 'KRW'))
             # 첫 매수는 잔액의 절반, 이후 매수는 전체 잔액으로 매수
-            amount_to_buy = krw_balance / 2 if make_trade_decision.buy_count%2 == 0 else krw_balance
+            amount_to_buy = krw_balance / 2 if make_trade_decision.buy_count % 2 == 0 else krw_balance
             if amount_to_buy > 5000:  # 최소 매수 금액 조건 (Upbit에서 5000원 이상 매수 필요)
                 upbit.buy_market_order("KRW-BTC", amount_to_buy)
                 send_slack_message(f"매수 주문 완료: {amount_to_buy}원어치 BTC 매수")
@@ -147,7 +149,7 @@ def make_trade_decision(df, bollinger_weight=0.25, rsi_weight=0.25, cci_weight=0
             balances = get_balance()
             btc_balance = float(next(b['balance'] for b in balances if b['currency'] == 'BTC'))
             # 첫 매도는 자산의 절반, 이후 매도는 전체 자산으로 매도
-            amount_to_sell = btc_balance / 2 if make_trade_decision.sell_count%2 == 0 else btc_balance
+            amount_to_sell = btc_balance / 2 if make_trade_decision.sell_count % 2 == 0 else btc_balance
             if amount_to_sell > 0.00008:  # 최소 매도 수량 조건 (Upbit에서 최소 매도 수량 필요)
                 upbit.sell_market_order("KRW-BTC", amount_to_sell)
                 send_slack_message(f"매도 주문 완료: {amount_to_sell} BTC 매도")

@@ -5,6 +5,7 @@ import pandas as pd
 import time
 import requests
 from dotenv import load_dotenv
+from tqdm import tqdm
 
 load_dotenv()
 ACCESS_KEY = os.getenv('UPBIT_ACCESS_KEY')
@@ -32,8 +33,11 @@ def send_slack_message(message):
 def get_data(ticker, interval='minute1', count=100):
     """
     주어진 티커와 간격에 대한 OHLCV 데이터를 가져옵니다 (기본적으로 100개의 데이터).
+    진행도를 tqdm으로 표시합니다.
     """
-    data = pyupbit.get_ohlcv(ticker, interval=interval, count=count)
+    data = None
+    for _ in tqdm(range(1), desc="데이터 로딩 중..."):
+        data = pyupbit.get_ohlcv(ticker, interval=interval, count=count)
     return data
 
 # 볼린저 밴드를 계산하는 함수
@@ -101,10 +105,6 @@ def make_trade_decision(df, bollinger_weight=0.25, rsi_weight=0.25, cci_weight=0
         score += bollinger_weight  # 하한선 터치 시 매수 신호
     elif latest_close > upper_band.iloc[-1]:
         score -= bollinger_weight  # 상한선 터치 시 매도 신호
-    elif latest_close > rolling_mean.iloc[-1] and df['close'].iloc[-2] <= rolling_mean.iloc[-2]:
-        score += bollinger_weight  # 중심선 돌파 시 매수 신호
-    elif latest_close < rolling_mean.iloc[-1] and df['close'].iloc[-2] >= rolling_mean.iloc[-2]:
-        score -= bollinger_weight  # 중심선 하향 돌파 시 매도 신호
 
     # RSI 점수
     if rsi.iloc[-1] < 30:
@@ -137,6 +137,7 @@ def backtest(data, initial_balance=1000000):
     sell_count = 0
     trades = []
     max_balance = initial_balance
+    avg_buy_price = 0
 
     for i in range(len(data) - 1):
         df = data.iloc[:i + 1]
@@ -146,6 +147,7 @@ def backtest(data, initial_balance=1000000):
         if score > 0.5:
             amount_to_buy = balance / 2 if buy_count%2 == 0 else balance
             if amount_to_buy > 5000:  # 최소 매수 금액 조건
+                avg_buy_price = (avg_buy_price * btc_balance + amount_to_buy) / (btc_balance + amount_to_buy / df['close'].iloc[-1]) if btc_balance > 0 else df['close'].iloc[-1]
                 btc_balance += amount_to_buy / df['close'].iloc[-1]
                 balance -= amount_to_buy
                 buy_count += 1
@@ -153,8 +155,10 @@ def backtest(data, initial_balance=1000000):
                 print(f"매수: {amount_to_buy}원, BTC 잔액: {btc_balance}, 남은 현금: {balance}")
 
         # 매도 로직
-        elif score < -0.5:
-            amount_to_sell = btc_balance / 2 if sell_count%2==0 else btc_balance
+        if btc_balance > 0:
+          if (score < -0.2 and df['close'].iloc[-1] > avg_buy_price * 1.01) or (df['close'].iloc[-1] < avg_buy_price * 0.9) or (df['close'].iloc[-1] > avg_buy_price * 1.02):
+            # 추가된 조건: score < -0.2 이고 평균 매수가 대비 1% 이상 수익 발생 시, 혹은 -10% 손실 또는 +2% 수익 시 매도
+            amount_to_sell = btc_balance / 2 if sell_count%2 == 0 else btc_balance
             if amount_to_sell > 0:
                 balance += amount_to_sell * df['close'].iloc[-1]
                 btc_balance -= amount_to_sell
