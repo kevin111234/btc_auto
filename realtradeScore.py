@@ -167,12 +167,13 @@ def real_time_trading(params):
                         'stop_price': avg_buy_price * (1 - stop_loss),
                         'take_price': avg_buy_price * (1 + take_profit)
                     }
+                    print(f"포지션 정보: {position}")
 
             # 매도 조건
             elif position is not None:
                 if sell_score >= sum(weights.values()) * 0.6 and current_price > avg_buy_price + avg_buy_price*0.002:
-                  sell_crypto(current_price, position['quantity'])
-                  position = None
+                    sell_crypto(current_price, position['quantity'])
+                    position = None
                 elif (current_price >= position['take_price']):
                     # 이익 실현 매도
                     sell_crypto(current_price, position['quantity'])
@@ -180,7 +181,7 @@ def real_time_trading(params):
                     print(message)
                     send_slack_message(message)
                     position = None
-                elif current_price <= position['stop_price'] or ((latest['ema_short'] < latest['ema_long']) and (latest['rsi'] > 70)):
+                elif (current_price <= position['stop_price']):
                     # 손절 매도
                     sell_crypto(current_price, position['quantity'])
                     message=f"손절 매도 실행: {current_price}"
