@@ -144,7 +144,7 @@ def backtest(data, initial_balance=1000000):
 
         # 매수 로직
         if score > 0.5:
-            amount_to_buy = balance / 2 if buy_count == 0 else balance
+            amount_to_buy = balance / 2 if buy_count%2 == 0 else balance
             if amount_to_buy > 5000:  # 최소 매수 금액 조건
                 btc_balance += amount_to_buy / df['close'].iloc[-1]
                 balance -= amount_to_buy
@@ -154,7 +154,7 @@ def backtest(data, initial_balance=1000000):
 
         # 매도 로직
         elif score < -0.5:
-            amount_to_sell = btc_balance / 2 if sell_count == 0 else btc_balance
+            amount_to_sell = btc_balance / 2 if sell_count%2==0 else btc_balance
             if amount_to_sell > 0:
                 balance += amount_to_sell * df['close'].iloc[-1]
                 btc_balance -= amount_to_sell
