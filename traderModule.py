@@ -77,12 +77,18 @@ def data_collection(symbol, interval, count):
     return df
 
 # 매수 함수
+buy_count = 0  # 매수 카운트 변수 (홀수 번째 매수에는 보유 자산의 절반만 매수, 짝수 번째 매수에는 전체 매수)
+
 def buy_crypto(current_price):
+    global buy_count
     balance = upbit.get_balance("KRW")  # 보유한 원화 잔고 확인
     target_price = current_price * 1.005  # 현재 가격보다 약간 높은 가격에 매수 시도
+    buy_count += 1
+    portion = 0.5 if buy_count % 2 != 0 else 1  # 홀수 번째 매수는 절반, 짝수 번째 매수는 전체
+
     if balance and balance > 6000:  # 최소 주문 금액 6000원 이상일 때만 매수
         # 지정가 매수 실행 및 주문 ID 저장
-        order = upbit.buy_limit_order("KRW-BTC", target_price, balance * 0.9995 / target_price)
+        order = upbit.buy_limit_order("KRW-BTC", target_price, (balance * portion * 0.9995) / target_price)
         order_uuid = order.get('uuid')  # 주문 ID 추출
         time_elapsed = 0
         time_interval = 1  # 1초마다 확인
@@ -95,7 +101,7 @@ def buy_crypto(current_price):
                 # 주문 체결 완료
                 position_quantity = upbit.get_balance("BTC") or 0
                 avg_buy_price = upbit.get_avg_buy_price("BTC")
-                message = f"매수 실행: 목표 가격 {target_price} KRW, 금액 {balance} KRW, 수량 {position_quantity} BTC"
+                message = f"매수 실행: 목표 가격 {target_price} KRW, 금액 {balance * portion} KRW, 수량 {position_quantity} BTC"
                 print(message)
                 send_slack_message(message)
                 return position_quantity, avg_buy_price
@@ -111,7 +117,6 @@ def buy_crypto(current_price):
         print(message)
         send_slack_message(message)
         return 0, 0
-    
     else: 
         message = f"매수 신호 검지되었으나 잔고 부족으로 매수하지 않음: 가격 {current_price} KRW, 금액 {balance} KRW"
         print(message)
@@ -119,18 +124,25 @@ def buy_crypto(current_price):
         return 0, 0
 
 # 매도 함수
+sell_count = 0  # 매도 카운트 변수 (홀수 번째 매도에는 보유 자산의 절반만 매도, 짝수 번째 매도에는 전체 매도)
+
 def sell_crypto(current_price, position_quantity):
-    if position_quantity and position_quantity > 0:
-        upbit.sell_market_order("KRW-BTC", position_quantity)
+    global sell_count
+    sell_count += 1
+    portion = 0.5 if sell_count % 2 != 0 else 1  # 홀수 번째 매도는 절반, 짝수 번째 매도는 전체
+    sell_quantity = position_quantity * portion
+
+    if sell_quantity > 0:
+        upbit.sell_market_order("KRW-BTC", sell_quantity)
         time.sleep(10)  # 매도 후 잔고 업데이트를 위한 대기 시간 추가
         remaining_quantity = upbit.get_balance("BTC") or 0  # 매도 후 잔고 업데이트 확인
         if remaining_quantity < position_quantity:
-            message = f"매도 실행: 가격 {current_price} KRW, 수량 {position_quantity} BTC"
+            message = f"매도 실행: 가격 {current_price} KRW, 수량 {sell_quantity} BTC"
             print(message)
             send_slack_message(message)
             return 1
         else:
-            message = f"매도 실패: 가격 {current_price} KRW, 수량 {position_quantity} BTC"
+            message = f"매도 실패: 가격 {current_price} KRW, 수량 {sell_quantity} BTC"
             print(message)
             send_slack_message(message)
             return 0
@@ -156,7 +168,6 @@ def real_time_trading(symbol='KRW-BTC', interval='minute1', count=100):
 
     while True:
         try:
-            print("자동 매수 시작")
             # 데이터 수집
             current_price = pyupbit.get_current_price(symbol)
             df = data_collection(symbol, interval, count)
