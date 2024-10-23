@@ -89,7 +89,13 @@ def buy_crypto(current_price):
     if balance and balance > 6000:  # 최소 주문 금액 6000원 이상일 때만 매수
         # 지정가 매수 실행 및 주문 ID 저장
         order = upbit.buy_limit_order("KRW-BTC", target_price, (balance * portion * 0.9995) / target_price)
-        order_uuid = order.get('uuid')  # 주문 ID 추출
+        order_uuid = order.get('uuid') if order else None  # 주문 ID 추출
+        if not order_uuid:
+            message = "매수 주문 생성 실패: 주문 ID를 가져올 수 없습니다."
+            print(message)
+            send_slack_message(message)
+            return 0, 0
+
         time_elapsed = 0
         time_interval = 1  # 1초마다 확인
         max_wait_time = 10  # 최대 대기 시간 10초
@@ -97,6 +103,10 @@ def buy_crypto(current_price):
         # 주문 체결 여부 확인 루프
         while time_elapsed < max_wait_time:
             order_detail = upbit.get_order(order_uuid)
+            if order_detail is None:
+                message = f"매수 주문 세부 정보 조회 실패: 주문 ID {order_uuid}에 대한 정보를 가져올 수 없습니다."
+                print(message)
+                send_slack_message(message)
             if order_detail['state'] == 'done':
                 # 주문 체결 완료
                 position_quantity = upbit.get_balance("BTC") or 0
