@@ -9,27 +9,30 @@ symbol = "KRW-BTC"
 timeframe = "minute1"  # 1분봉
 higher_timeframe = "minute15"  # 15분봉 또는 "minute60"으로 변경 가능
 
-# 데이터 수집
+# 데이터 수집 함수
 def get_historical_data(symbol, interval, count):
     df_list = []
     to = None  # 마지막 데이터의 시간
 
     while count > 0:
-        print(f"{count}번째 데이터 수집중")
         fetch_count = min(count, 200)
         df = pyupbit.get_ohlcv(symbol, interval=interval, count=fetch_count, to=to)
         if df is None or df.empty:
             break
         df_list.append(df)
-        to = df.index[0]  # 가장 오래된 시간으로 업데이트
+        # to 파라미터를 1초 이전으로 설정하여 중복 방지
+        last_timestamp = df.index[0]
+        to = last_timestamp - pd.Timedelta(seconds=1)
         count -= fetch_count
         time.sleep(0.1)  # API 호출 간 딜레이
 
     df = pd.concat(df_list)
     df = df.sort_index()
+    # 인덱스 중복 제거
+    df = df[~df.index.duplicated(keep='first')]
     return df
 
-# 지표 계산
+# 지표 계산 함수
 def calculate_indicators(df):
     # MACD
     macd = ta.macd(df['close'])
@@ -56,7 +59,7 @@ def calculate_indicators(df):
     
     return df
 
-# 전략 구현
+# 전략 구현 함수
 def apply_strategy(df, higher_df):
     # 포지션 관리 변수 초기화
     position = None  # "long" 또는 None
@@ -67,7 +70,7 @@ def apply_strategy(df, higher_df):
     positions = []
     returns = []
 
-    # 보조 지표 스코어링 함수 수정
+    # 보조 지표 스코어링 함수
     def get_volume_score(current_volume, avg_volume):
         if current_volume < avg_volume:
             return 0
@@ -90,7 +93,10 @@ def apply_strategy(df, higher_df):
         # 현재 시점의 데이터 선택
         current_data = df.iloc[i]
         prev_data = df.iloc[i - 1]
-        current_higher_data = higher_df.iloc[min(i, len(higher_df)-1)]  # 인덱스 초과 방지
+        
+        # 상위 타임프레임 데이터 선택 (인덱스 초과 방지)
+        higher_idx = min(i, len(higher_df) - 1)
+        current_higher_data = higher_df.iloc[higher_idx]
         
         # 추세 판단 (상위 타임프레임)
         current_macd = current_higher_data['MACD_12_26_9']
@@ -164,12 +170,11 @@ def apply_strategy(df, higher_df):
         
     return positions, returns
 
-# 백테스팅 실행
+# 백테스팅 실행 함수
 def backtest():
     # 데이터 수집
-    df_count = 5000
-    df = get_historical_data(symbol, interval=timeframe, count=df_count)
-    higher_df = get_historical_data(symbol, interval=higher_timeframe, count=df_count)
+    df = get_historical_data(symbol, interval=timeframe, count=5000)
+    higher_df = get_historical_data(symbol, interval=higher_timeframe, count=5000)
     
     # 지표 계산
     df = calculate_indicators(df)
