@@ -6,3 +6,4 @@ requests
 tqdm
 pandas_ta
 slack_sdk
+ta

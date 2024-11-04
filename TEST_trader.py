@@ -26,6 +26,10 @@ entry_price = 0  # 진입 가격
 stop_loss = 0    # 손절매 가격
 take_profit = 0  # 이익 실현 가격
 position_size = 0  # 포지션 크기
+average_buy_price = 0  # 평균 구매가
+
+# 추가된 매도 조건 설정 (평균 구매가 대비 최소 이익률)
+MIN_PROFIT_PERCENT = 0.01  # 1% 이상의 이익이어야 매도
 
 def log_to_slack(message):
     """Slack 채널에 메시지 전송."""
@@ -149,22 +153,33 @@ def set_stop_loss_take_profit(entry_price, atr, bbw_level):
     take_profit = entry_price + tp_distance  # 매수 포지션의 이익 실현 가격
     return stop_loss, take_profit
 
-# A. 기존 자산 확인
-coin_balance = upbit.get_balance(COIN_TICKER)  # 해당 코인 보유 수량 조회
-if coin_balance > 0:
-    position = 'LONG'  # 현재 포지션은 매수 상태
-    position_size = coin_balance
-    entry_price = pyupbit.get_current_price(COIN_TICKER)  # 진입 가격 설정
-    # 초기 손절매와 이익 실현 가격 설정
-    df_initial = get_recent_data(COIN_TICKER)
-    df_initial = calculate_indicators(df_initial)
-    bbw_level_initial = df_initial['bb_width'].iloc[-1] / df_initial['bb_width_ma'].iloc[-1]
-    atr_initial = df_initial['atr'].iloc[-1]
-    stop_loss, take_profit = set_stop_loss_take_profit(entry_price, atr_initial, bbw_level_initial)
-    print(f"기존 포지션 발견: 진입 가격={entry_price}, 손절매={stop_loss}, 이익 실현={take_profit}")
-else:
-    print("현재 포지션이 없습니다.")
-    position = None  # 포지션 없음
+def check_existing_position():
+    """현재 자산과 포지션 정보를 조회합니다."""
+    coin_balance = upbit.get_balance(COIN_TICKER)  # 해당 코인 보유 수량 조회
+    if coin_balance > 0:
+        position = 'LONG'  # 현재 포지션은 매수 상태
+        position_size = coin_balance
+        entry_price = upbit.get_avg_buy_price(COIN_TICKER)  # 평균 매수가를 가져옴
+        average_buy_price = entry_price  # 평균 구매가 저장
+        # 초기 손절매와 이익 실현 가격 설정
+        df_initial = get_recent_data(COIN_TICKER)
+        df_initial = calculate_indicators(df_initial)
+        bbw_level_initial = df_initial['bb_width'].iloc[-1] / df_initial['bb_width_ma'].iloc[-1]
+        atr_initial = df_initial['atr'].iloc[-1]
+        stop_loss, take_profit = set_stop_loss_take_profit(entry_price, atr_initial, bbw_level_initial)
+        log_to_slack(f"기존 포지션 발견: 진입 가격={entry_price}, 손절매={stop_loss}, 이익 실현={take_profit}")
+    else:
+        log_to_slack("현재 포지션이 없습니다.")
+        position = None  # 포지션 없음
+        position_size = 0
+        entry_price = 0
+        average_buy_price = 0
+        stop_loss = 0
+        take_profit = 0
+    return position, position_size, entry_price, average_buy_price, stop_loss, take_profit
+
+# A. 기존 자산 확인 (함수 호출로 대체)
+position, position_size, entry_price, average_buy_price, stop_loss, take_profit = check_existing_position()
 
 # B. 반복문 시작
 while True:
@@ -184,25 +199,23 @@ while True:
                 amount = upbit.get_balance(COIN_TICKER)
                 upbit.sell_market_order(COIN_TICKER, amount)
                 log_to_slack(f"손절매 발동. {COIN_TICKER} {amount}개를 {current_price}원에 매도했습니다.")
-                print(f"손절매 발동. {COIN_TICKER} {amount}개를 {current_price}원에 매도했습니다.")
                 position = None  # 포지션 종료
             elif current_price >= take_profit:
                 # G. 이익 실현 실행
                 amount = upbit.get_balance(COIN_TICKER)
                 upbit.sell_market_order(COIN_TICKER, amount)
                 log_to_slack(f"이익 실현 지점 도달. {COIN_TICKER} {amount}개를 {current_price}원에 매도했습니다.")
-                print(f"이익 실현 지점 도달. {COIN_TICKER} {amount}개를 {current_price}원에 매도했습니다.")
                 position = None
-            elif sell_signal:
-                # G. 반대 신호 발생 시 매도
+            elif sell_signal and (current_price >= average_buy_price * (1 + MIN_PROFIT_PERCENT)):
+                # G. 매도 신호 발생 및 평균 구매가 대비 일정 % 이상 상승한 경우 매도
                 amount = upbit.get_balance(COIN_TICKER)
                 upbit.sell_market_order(COIN_TICKER, amount)
-                log_to_slack(f"매도 신호 감지. {COIN_TICKER} {amount}개를 {current_price}원에 매도했습니다.")
-                print(f"매도 신호 감지. {COIN_TICKER} {amount}개를 {current_price}원에 매도했습니다.")
+                profit_percent = ((current_price - average_buy_price) / average_buy_price) * 100
+                log_to_slack(f"매도 신호 감지 및 최소 이익 달성. {COIN_TICKER} {amount}개를 {current_price}원에 매도했습니다. 이익률: {profit_percent:.2f}%")
                 position = None
             else:
                 # I. 포지션 유지
-                log_to_slack("포지션을 유지합니다.")
+                print("포지션을 유지합니다.")
                 time.sleep(10)
                 continue
         else:
@@ -225,17 +238,17 @@ while True:
                     if not open_orders:
                         # 주문 체결됨
                         position = 'LONG'
-                        entry_price = order_price
+                        entry_price = upbit.get_avg_buy_price(COIN_TICKER)  # 평균 매수가 가져오기
+                        average_buy_price = entry_price  # 평균 구매가 저장
                         bbw_level = df['bb_width'].iloc[-1] / df['bb_width_ma'].iloc[-1]
                         atr = df['atr'].iloc[-1]
                         stop_loss, take_profit = set_stop_loss_take_profit(entry_price, atr, bbw_level)
                         log_to_slack(f"매수 주문 체결됨. 진입 가격={entry_price}, 손절매={stop_loss}, 이익 실현={take_profit}")
-                        print(f"매수 주문 체결됨. 진입 가격={entry_price}, 손절매={stop_loss}, 이익 실현={take_profit}")
                     else:
                         # 주문 미체결, 주문 취소
                         for order in open_orders:
                             upbit.cancel_order(order['uuid'])
-                        print("매수 주문이 체결되지 않아 취소되었습니다.")
+                        log_to_slack("매수 주문이 체결되지 않아 취소되었습니다.")
                 else:
                     print("총합 스코어가 낮아 포지션에 진입하지 않습니다.")
             else:
