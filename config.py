@@ -40,5 +40,3 @@ class Config:
                 raise ValueError(f"환경변수 {attr}가 설정되지 않았습니다.")
             else:
               print(f"환경변수 {attr} 설정완료")
-
-config = Config()
