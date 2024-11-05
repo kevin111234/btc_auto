@@ -8,11 +8,15 @@ from slack_sdk.errors import SlackApiError
 import ta  # 기술적 지표를 계산하기 위한 라이브러리
 
 # 1. 환경변수 설정
-UPBIT_ACCESS_KEY = os.environ['UPBIT_ACCESS_KEY']
-UPBIT_SECRET_KEY = os.environ['UPBIT_SECRET_KEY']
-SLACK_API_TOKEN = os.environ['SLACK_API_TOKEN']
-SLACK_CHANNEL_ID = os.environ['SLACK_CHANNEL_ID']
-COIN_TICKER = os.environ['COIN_TICKER']
+UPBIT_ACCESS_KEY = os.environ.get('UPBIT_ACCESS_KEY')
+UPBIT_SECRET_KEY = os.environ.get('UPBIT_SECRET_KEY')
+SLACK_API_TOKEN = os.environ.get('SLACK_API_TOKEN')
+SLACK_CHANNEL_ID = os.environ.get('SLACK_CHANNEL_ID')
+COIN_TICKER = os.environ.get('COIN_TICKER')
+
+# 환경변수 유효성 검사
+if not all([UPBIT_ACCESS_KEY, UPBIT_SECRET_KEY, SLACK_API_TOKEN, SLACK_CHANNEL_ID, COIN_TICKER]):
+    raise EnvironmentError("환경변수가 올바르게 설정되지 않았습니다.")
 
 # Upbit 클라이언트 초기화
 upbit = pyupbit.Upbit(UPBIT_ACCESS_KEY, UPBIT_SECRET_KEY)
@@ -41,10 +45,15 @@ def log_to_slack(message):
 def get_recent_data(ticker, interval='minute1', count=200):
     """최근 시장 데이터를 가져옵니다."""
     df = pyupbit.get_ohlcv(ticker, interval=interval, count=count)
+    if df is None:
+        # 데이터가 없을 경우 예외 발생
+        raise ValueError(f"데이터를 가져올 수 없습니다. 티커를 확인하세요: {ticker}")
     return df
 
 def calculate_indicators(df):
     """기술적 지표를 계산합니다."""
+    if df is None or df.empty:
+        raise ValueError("데이터프레임이 비어있거나 None입니다. 데이터를 가져오는 데 문제가 발생했습니다.")
     df = df.copy()
     # RSI 계산
     df['rsi'] = ta.momentum.RSIIndicator(df['close'], window=14).rsi()
@@ -139,6 +148,7 @@ def determine_position_size(total_score, total_assets):
 
 def set_stop_loss_take_profit(entry_price, atr, bbw_level):
     """손절매와 이익 실현 지점을 설정합니다."""
+    # 변동성에 따라 손절매와 이익 실현 지점 계산
     if bbw_level > 1.2:
         sl_distance = atr * 1.5  # 변동성 높음
         tp_distance = atr * 3
@@ -149,8 +159,26 @@ def set_stop_loss_take_profit(entry_price, atr, bbw_level):
         sl_distance = atr  # 변동성 보통
         tp_distance = atr * 2
 
-    stop_loss = entry_price - sl_distance  # 매수 포지션의 손절매 가격
-    take_profit = entry_price + tp_distance  # 매수 포지션의 이익 실현 가격
+    # 최소 및 최대 손절매 거리 설정 (진입 가격의 5% ~ 15%)
+    min_sl_distance = entry_price * 0.05  # 최소 손절매 거리 (5%)
+    max_sl_distance = entry_price * 0.15  # 최대 손절매 거리 (15%)
+
+    # 실제 손절매 거리를 최소/최대로 제한
+    sl_distance = max(min_sl_distance, min(sl_distance, max_sl_distance))
+
+    # 손절매 가격 계산
+    stop_loss = entry_price - sl_distance
+
+    # 최소 및 최대 이익 실현 거리 설정 (진입 가격의 5% ~ 15%)
+    min_tp_distance = entry_price * 0.05  # 최소 이익 실현 거리 (5%)
+    max_tp_distance = entry_price * 0.15  # 최대 이익 실현 거리 (15%)
+
+    # 실제 이익 실현 거리를 최소/최대로 제한
+    tp_distance = max(min_tp_distance, min(tp_distance, max_tp_distance))
+
+    # 이익 실현 가격 계산
+    take_profit = entry_price + tp_distance
+
     return stop_loss, take_profit
 
 def check_existing_position():
@@ -179,7 +207,11 @@ def check_existing_position():
     return position, position_size, entry_price, average_buy_price, stop_loss, take_profit
 
 # A. 기존 자산 확인 (함수 호출로 대체)
-position, position_size, entry_price, average_buy_price, stop_loss, take_profit = check_existing_position()
+try:
+    position, position_size, entry_price, average_buy_price, stop_loss, take_profit = check_existing_position()
+except Exception as e:
+    log_to_slack(f"초기화 중 에러 발생: {e}")
+    raise e
 
 # B. 반복문 시작
 while True:
@@ -215,7 +247,7 @@ while True:
                 position = None
             else:
                 # I. 포지션 유지
-                print("포지션을 유지합니다.")
+                log_to_slack("포지션을 유지합니다.")
                 time.sleep(10)
                 continue
         else:
@@ -250,10 +282,10 @@ while True:
                             upbit.cancel_order(order['uuid'])
                         log_to_slack("매수 주문이 체결되지 않아 취소되었습니다.")
                 else:
-                    print("총합 스코어가 낮아 포지션에 진입하지 않습니다.")
+                    log_to_slack("총합 스코어가 낮아 포지션에 진입하지 않습니다.")
             else:
                 # I. 매수 조건 미충족, 대기
-                print("매수 신호가 없습니다. 대기합니다.")
+                log_to_slack("매수 신호가 없습니다. 대기합니다.")
                 time.sleep(10)
                 continue
 
