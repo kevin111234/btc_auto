@@ -247,7 +247,7 @@ while True:
                 position = None
             else:
                 # I. 포지션 유지
-                log_to_slack("포지션을 유지합니다.")
+                print("포지션을 유지합니다.")
                 time.sleep(10)
                 continue
         else:
@@ -282,10 +282,10 @@ while True:
                             upbit.cancel_order(order['uuid'])
                         log_to_slack("매수 주문이 체결되지 않아 취소되었습니다.")
                 else:
-                    log_to_slack("총합 스코어가 낮아 포지션에 진입하지 않습니다.")
+                    print("총합 스코어가 낮아 포지션에 진입하지 않습니다.")
             else:
                 # I. 매수 조건 미충족, 대기
-                log_to_slack("매수 신호가 없습니다. 대기합니다.")
+                print("매수 신호가 없습니다. 대기합니다.")
                 time.sleep(10)
                 continue
 
