@@ -4,6 +4,7 @@ from dotenv import load_dotenv
 import pandas as pd
 import numpy as np
 import pandas_ta as ta
+from numpy import nan as npnan
 import pyupbit
 from slack_sdk import WebClient
 from slack_sdk.errors import SlackApiError
@@ -12,15 +13,15 @@ from slack_sdk.errors import SlackApiError
 load_dotenv()
 
 # Upbit API 키
-ACCESS_KEY = os.getenv('ACCESS_KEY')
-SECRET_KEY = os.getenv('SECRET_KEY')
+ACCESS_KEY = os.getenv('UPBIT_ACCESS_KEY')
+SECRET_KEY = os.getenv('UPBIT_SECRET_KEY')
 
 # Slack API 토큰과 채널 ID
-SLACK_TOKEN = os.getenv('SLACK_TOKEN')
-SLACK_CHANNEL = os.getenv('SLACK_CHANNEL')
+SLACK_TOKEN = os.getenv('SLACK_API_TOKEN')
+SLACK_CHANNEL = os.getenv('SLACK_CHANNEL_ID')
 
 # 코인 티커 정보
-COIN_TICKER = os.getenv('COIN_TICKER')
+COIN_TICKER = os.getenv('COIN_TICKER', 'KRW-BTC')
 
 # 필수 환경 변수 체크
 if not ACCESS_KEY or not SECRET_KEY or not SLACK_TOKEN or not SLACK_CHANNEL or not COIN_TICKER:
@@ -67,16 +68,16 @@ def calculate_indicators(df):
     기술적 지표를 계산하는 함수
     """
     # 볼린저 밴드 계산
-    bb = ta.bbands(df['close'], length=20)
+    bb = ta.bbands(df['close'], length=20, fillna=npnan)
     df['bb_upper'] = bb['BBU_20_2.0']
     df['bb_middle'] = bb['BBM_20_2.0']
     df['bb_lower'] = bb['BBL_20_2.0']
 
     # RSI 계산
-    df['rsi'] = ta.rsi(df['close'], length=14)
+    df['rsi'] = ta.rsi(df['close'], length=14, fillna=npnan)
 
     # OBV 계산
-    df['obv'] = ta.obv(df['close'], df['volume'])
+    df['obv'] = ta.obv(df['close'], df['volume'], fillna=npnan)
 
     # BBW 계산 (볼린저 밴드 폭)
     df['bb_width'] = df['bb_upper'] - df['bb_lower']
