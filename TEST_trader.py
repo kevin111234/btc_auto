@@ -3,8 +3,6 @@ import os
 from dotenv import load_dotenv
 import pandas as pd
 import numpy as np
-import pandas_ta as ta
-from numpy import nan as npnan
 import pyupbit
 from slack_sdk import WebClient
 from slack_sdk.errors import SlackApiError
@@ -21,7 +19,7 @@ SLACK_TOKEN = os.getenv('SLACK_API_TOKEN')
 SLACK_CHANNEL = os.getenv('SLACK_CHANNEL_ID')
 
 # 코인 티커 정보
-COIN_TICKER = os.getenv('COIN_TICKER', 'KRW-BTC')
+COIN_TICKER = os.getenv('COIN_TICKER')
 
 # 필수 환경 변수 체크
 if not ACCESS_KEY or not SECRET_KEY or not SLACK_TOKEN or not SLACK_CHANNEL or not COIN_TICKER:
@@ -68,16 +66,21 @@ def calculate_indicators(df):
     기술적 지표를 계산하는 함수
     """
     # 볼린저 밴드 계산
-    bb = ta.bbands(df['close'], length=20, fillna=npnan)
-    df['bb_upper'] = bb['BBU_20_2.0']
-    df['bb_middle'] = bb['BBM_20_2.0']
-    df['bb_lower'] = bb['BBL_20_2.0']
+    df['bb_upper'] = df['close'].rolling(window=20).mean() + 2 * df['close'].rolling(window=20).std()
+    df['bb_middle'] = df['close'].rolling(window=20).mean()
+    df['bb_lower'] = df['close'].rolling(window=20).mean() - 2 * df['close'].rolling(window=20).std()
 
     # RSI 계산
-    df['rsi'] = ta.rsi(df['close'], length=14, fillna=npnan)
+    delta = df['close'].diff(1)
+    gain = delta.where(delta > 0, 0)
+    loss = -delta.where(delta < 0, 0)
+    avg_gain = gain.rolling(window=14).mean()
+    avg_loss = loss.rolling(window=14).mean()
+    rs = avg_gain / avg_loss
+    df['rsi'] = 100 - (100 / (1 + rs))
 
     # OBV 계산
-    df['obv'] = ta.obv(df['close'], df['volume'], fillna=npnan)
+    df['obv'] = (np.sign(df['close'].diff()) * df['volume']).fillna(0).cumsum()
 
     # BBW 계산 (볼린저 밴드 폭)
     df['bb_width'] = df['bb_upper'] - df['bb_lower']
