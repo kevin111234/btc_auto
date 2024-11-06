@@ -183,21 +183,39 @@ def calculate_max_position():
     총 자산의 50%를 재설정하는 함수
     """
     # 보유 자산의 수량 조회
-    balance = upbit.get_balance(COIN_TICKER)
-    if balance is None:
+    btc_balance = upbit.get_balance('KRW-BTC')
+    eth_balance = upbit.get_balance('KRW-ETH')
+    krw_balance = upbit.get_balance('KRW')
+
+    if btc_balance is None or eth_balance is None or krw_balance is None:
         raise ValueError("잔액 정보를 가져오는 데 실패했습니다.")
-    balance = float(balance)
+
+    btc_balance = float(btc_balance)
+    eth_balance = float(eth_balance)
+    krw_balance = float(krw_balance)
 
     # 현재 가격 조회
-    price = pyupbit.get_current_price(COIN_TICKER)
-    if price is None:
+    btc_price = pyupbit.get_current_price('KRW-BTC')
+    eth_price = pyupbit.get_current_price('KRW-ETH')
+    if btc_price is None or eth_price is None:
         raise ValueError("현재 가격 정보를 가져오는 데 실패했습니다.")
 
     # 자산 평가 금액 계산
-    asset_value = balance * price
+    btc_value = btc_balance * btc_price
+    eth_value = eth_balance * eth_price
+    total_asset_value = btc_value + eth_value + krw_balance
 
     # max_position 설정 (총 자산의 50%)
-    max_position = asset_value * 0.5
+    max_position = total_asset_value * 0.5
+
+    # 슬랙으로 자산 평가 금액 및 max_position 알림
+    message = f"""총 자산 평가 금액: {max_position * 2:,.0f}원
+    투자 한도(max_position): {max_position:,.0f}원
+    보유 현금: {krw_balance:,.0f}원
+    보유 BTC 평가 금액: {btc_value:,.0f}원
+    보유 ETH 평가 금액: {eth_value:,.0f}원"""
+    send_slack_message(message)
+
     return max_position
 
 def main():
@@ -209,12 +227,8 @@ def main():
     # 초기 max_position 설정
     max_position = calculate_max_position()
 
-    # 슬랙으로 자산 평가 금액 및 max_position 알림
-    message = f"총 자산 평가 금액: {max_position * 2:,.0f}원\n투자 한도(max_position): {max_position:,.0f}원"
-    send_slack_message(message)
-
     # 초기 데이터 수집
-    df = get_historical_data(ticker, interval='minute1', count=200)
+    df = get_historical_data(ticker, interval='minute5', count=200)
     if df is None or df.empty:
         raise ValueError("과거 데이터를 가져오는 데 실패했습니다.")
     df = calculate_indicators(df)
@@ -343,7 +357,7 @@ def main():
             # 에러 메시지 출력
             print(f"에러 발생: {e}")
             # 60초 대기 후 재시도
-            time.sleep(60)
+            time.sleep(10)
 
 if __name__ == "__main__":
     main()
