@@ -197,7 +197,7 @@ def calculate_max_position():
     asset_value = balance * price
 
     # max_position 설정 (총 자산의 50%)
-    max_position = asset_value * 0.5
+    max_position = asset_value * 0.48
     return max_position
 
 def main():
@@ -235,7 +235,7 @@ def main():
                 'close': current_price,
                 'volume': current_volume
             }
-            df = df.append(new_data, ignore_index=True)
+            df = pd.concat([df, pd.DataFrame([new_data])], ignore_index=True)
             df = calculate_indicators(df)
 
             # 매매 신호 생성
