@@ -95,9 +95,11 @@ def generate_signals(df):
 
     # 매수 조건: 가격이 볼린저 밴드 하단을 하향 돌파하고 RSI가 30 이하인 경우
     if last['close'] < last['bb_lower'] and last['rsi'] < 30:
+        send_slack_message(f"{last['close']}에서 매수 신호 발생, rsi= {last['rsi']}")
         return 'buy'
     # 매도 조건: 가격이 볼린저 밴드 상단을 상향 돌파하고 RSI가 70 이상인 경우
     elif last['close'] > last['bb_upper'] and last['rsi'] > 70:
+        send_slack_message(f"{last['close']}에서 매도 신호 발생, rsi = {last['rsi']}")
         return 'sell'
     else:
         return 'hold'
@@ -134,7 +136,7 @@ def calculate_position_size(df, max_position):
     total_score += obv_score
 
     # BBW 스코어링
-    last['bb_width'] = last['bb_upper'] - last['bb_lower']  # 현재 BBW 계산
+    df.loc[df.index[-1], 'bb_width'] = df.loc[df.index[-1], 'bb_upper'] - df.loc[df.index[-1], 'bb_lower']  # 현재 BBW 계산
     avg_bb_width = df['bb_width'].rolling(window=20).mean().iloc[-1]  # 20기간 평균 BBW
     bbw_level = last['bb_width'] / avg_bb_width  # BBW 수준 평가
     bbw_score = 0
@@ -243,6 +245,7 @@ def main():
 
             # 매수 신호 처리
             if signal == 'buy' and position['volume'] == 0:
+                send_slack_message("매수 신호 발생")
                 # 포지션 크기 결정
                 position_size = calculate_position_size(df, max_position)
                 # 희망 가격 설정 (현재가)
@@ -271,8 +274,8 @@ def main():
                         position['avg_buy_price'] = float(upbit.get_avg_buy_price(ticker))
                         position['volume'] = float(upbit.get_balance(ticker))
                         # 손절매 및 이익 실현 가격 설정
-                        position['stop_loss_price'] = position['avg_buy_price'] * 0.99  # 1% 손실 시 손절
-                        position['take_profit_price'] = position['avg_buy_price'] * 1.02  # 2% 이익 시 매도
+                        position['stop_loss_price'] = position['avg_buy_price'] * 0.9  # 10% 손실 시 손절
+                        position['take_profit_price'] = position['avg_buy_price'] * 1.04  # 4% 이익 시 매도
                 else:
                     send_slack_message("매수 주문 실패")
 
