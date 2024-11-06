@@ -1,99 +1,109 @@
-import os
 import time
+import os
+from dotenv import load_dotenv
 import pandas as pd
 import numpy as np
+import pandas_ta as ta
 import pyupbit
 from slack_sdk import WebClient
 from slack_sdk.errors import SlackApiError
-import ta  # 기술적 지표를 계산하기 위한 라이브러리
 
-# 1. 환경변수 설정
-UPBIT_ACCESS_KEY = os.environ.get('UPBIT_ACCESS_KEY')
-UPBIT_SECRET_KEY = os.environ.get('UPBIT_SECRET_KEY')
-SLACK_API_TOKEN = os.environ.get('SLACK_API_TOKEN')
-SLACK_CHANNEL_ID = os.environ.get('SLACK_CHANNEL_ID')
-COIN_TICKER = os.environ.get('COIN_TICKER')
+# 환경 변수 로드 (.env 파일에서 API 키와 Slack 토큰을 불러옵니다)
+load_dotenv()
 
-# 환경변수 유효성 검사
-if not all([UPBIT_ACCESS_KEY, UPBIT_SECRET_KEY, SLACK_API_TOKEN, SLACK_CHANNEL_ID, COIN_TICKER]):
-    raise EnvironmentError("환경변수가 올바르게 설정되지 않았습니다.")
+# Upbit API 키
+ACCESS_KEY = os.getenv('ACCESS_KEY')
+SECRET_KEY = os.getenv('SECRET_KEY')
 
-# Upbit 클라이언트 초기화
-upbit = pyupbit.Upbit(UPBIT_ACCESS_KEY, UPBIT_SECRET_KEY)
+# Slack API 토큰과 채널 ID
+SLACK_TOKEN = os.getenv('SLACK_TOKEN')
+SLACK_CHANNEL = os.getenv('SLACK_CHANNEL')
+
+# 코인 티커 정보
+COIN_TICKER = os.getenv('COIN_TICKER')
+
+# 필수 환경 변수 체크
+if not ACCESS_KEY or not SECRET_KEY or not SLACK_TOKEN or not SLACK_CHANNEL or not COIN_TICKER:
+    raise ValueError("필수 환경 변수가 설정되지 않았습니다. .env 파일을 확인해주세요.")
 
 # Slack 클라이언트 초기화
-slack_client = WebClient(token=SLACK_API_TOKEN)
+slack_client = WebClient(token=SLACK_TOKEN)
 
-# 포지션 관련 변수 초기화
-position = None  # 현재 포지션 상태 ('LONG' 또는 None)
-entry_price = 0  # 진입 가격
-stop_loss = 0    # 손절매 가격
-take_profit = 0  # 이익 실현 가격
-position_size = 0  # 포지션 크기
-average_buy_price = 0  # 평균 구매가
+# Upbit API 객체 생성
+upbit = pyupbit.Upbit(ACCESS_KEY, SECRET_KEY)
 
-# 추가된 매도 조건 설정 (평균 구매가 대비 최소 이익률)
-MIN_PROFIT_PERCENT = 0.01  # 1% 이상의 이익이어야 매도
-
-def log_to_slack(message):
-    """Slack 채널에 메시지 전송."""
+def send_slack_message(message):
+    """
+    Slack 채널로 메시지를 전송하는 함수
+    """
     try:
-        slack_client.chat_postMessage(channel=SLACK_CHANNEL_ID, text=message)
+        response = slack_client.chat_postMessage(
+            channel=SLACK_CHANNEL,
+            text=message
+        )
     except SlackApiError as e:
-        print(f"Slack API 에러: {e.response['error']}")
+        print(f"Slack API 에러 발생: {e.response['error']}")
 
-def get_recent_data(ticker, interval='minute1', count=200):
-    """최근 시장 데이터를 가져옵니다."""
-    df = pyupbit.get_ohlcv(ticker, interval=interval, count=count)
-    if df is None:
-        # 데이터가 없을 경우 예외 발생
-        raise ValueError(f"데이터를 가져올 수 없습니다. 티커를 확인하세요: {ticker}")
+def get_historical_data(ticker, interval, count):
+    """
+    과거 가격 데이터를 가져오는 함수
+    """
+    df = pyupbit.get_ohlcv(ticker=ticker, interval=interval, count=count)
     return df
+
+def get_current_data(ticker):
+    """
+    현재 가격과 거래량 데이터를 가져오는 함수
+    """
+    price = pyupbit.get_current_price(ticker)
+    orderbook = pyupbit.get_orderbook(ticker)
+    if orderbook is None:
+        raise ValueError("주문서 정보를 가져오는 데 실패했습니다.")
+    volume = orderbook['total_ask_size'] + orderbook['total_bid_size']
+    return price, volume
 
 def calculate_indicators(df):
-    """기술적 지표를 계산합니다."""
-    if df is None or df.empty:
-        raise ValueError("데이터프레임이 비어있거나 None입니다. 데이터를 가져오는 데 문제가 발생했습니다.")
-    df = df.copy()
-    # RSI 계산
-    df['rsi'] = ta.momentum.RSIIndicator(df['close'], window=14).rsi()
+    """
+    기술적 지표를 계산하는 함수
+    """
     # 볼린저 밴드 계산
-    bb_indicator = ta.volatility.BollingerBands(df['close'], window=20, window_dev=2)
-    df['bb_middle'] = bb_indicator.bollinger_mavg()   # 중간선
-    df['bb_upper'] = bb_indicator.bollinger_hband()   # 상단 밴드
-    df['bb_lower'] = bb_indicator.bollinger_lband()   # 하단 밴드
-    df['percent_b'] = bb_indicator.bollinger_pband()  # %B 지표
-    df['bb_width'] = bb_indicator.bollinger_wband()   # 볼린저 밴드 폭 (BBW)
-    # BBW 이동평균 계산
-    df['bb_width_ma'] = df['bb_width'].rolling(window=20).mean()
+    bb = ta.bbands(df['close'], length=20)
+    df['bb_upper'] = bb['BBU_20_2.0']
+    df['bb_middle'] = bb['BBM_20_2.0']
+    df['bb_lower'] = bb['BBL_20_2.0']
+
+    # RSI 계산
+    df['rsi'] = ta.rsi(df['close'], length=14)
+
     # OBV 계산
-    df['obv'] = ta.volume.OnBalanceVolumeIndicator(df['close'], df['volume']).on_balance_volume()
-    # ATR 계산
-    df['atr'] = ta.volatility.AverageTrueRange(df['high'], df['low'], df['close'], window=14).average_true_range()
+    df['obv'] = ta.obv(df['close'], df['volume'])
+
+    # BBW 계산 (볼린저 밴드 폭)
+    df['bb_width'] = df['bb_upper'] - df['bb_lower']
+
     return df
 
-def check_core_conditions(df):
-    """핵심 매수/매도 조건을 확인합니다."""
-    last = df.iloc[-1]  # 가장 최근 데이터
-    prev = df.iloc[-2]  # 이전 데이터
-
-    # 매수 조건 확인
-    buy = (
-        prev['rsi'] <= 30 and last['rsi'] > prev['rsi'] and  # RSI가 30 이하에서 상승 반전
-        prev['close'] <= prev['bb_lower'] and last['close'] > prev['close'] # 가격이 볼린저 밴드 하단을 터치 또는 하향 돌파 후 반등
-    )
-
-    # 매도 조건 확인
-    sell = (
-        prev['rsi'] >= 70 and last['rsi'] < prev['rsi'] and  # RSI가 70 이상에서 하락 반전
-        prev['close'] >= prev['bb_upper'] and last['close'] < prev['close'] # 가격이 볼린저 밴드 상단을 터치 또는 상향 돌파 후 하락
-    )
-
-    return buy, sell
-
-def score_auxiliary_indicators(df):
-    """보조 지표를 스코어링합니다."""
+def generate_signals(df):
+    """
+    매매 신호를 생성하는 함수
+    """
     last = df.iloc[-1]
+
+    # 매수 조건: 가격이 볼린저 밴드 하단을 하향 돌파하고 RSI가 30 이하인 경우
+    if last['close'] < last['bb_lower'] and last['rsi'] < 30:
+        return 'buy'
+    # 매도 조건: 가격이 볼린저 밴드 상단을 상향 돌파하고 RSI가 70 이상인 경우
+    elif last['close'] > last['bb_upper'] and last['rsi'] > 70:
+        return 'sell'
+    else:
+        return 'hold'
+
+def calculate_position_size(df, max_position):
+    """
+    변동성 스코어에 따라 포지션 크기를 결정하는 함수
+    """
+    last = df.iloc[-1]
+
     total_score = 0
 
     # 거래량 스코어링
@@ -120,7 +130,9 @@ def score_auxiliary_indicators(df):
     total_score += obv_score
 
     # BBW 스코어링
-    bbw_level = last['bb_width'] / last['bb_width_ma']  # BBW 수준 평가
+    last['bb_width'] = last['bb_upper'] - last['bb_lower']  # 현재 BBW 계산
+    avg_bb_width = df['bb_width'].rolling(window=20).mean().iloc[-1]  # 20기간 평균 BBW
+    bbw_level = last['bb_width'] / avg_bb_width  # BBW 수준 평가
     bbw_score = 0
     if bbw_level < 0.8:
         bbw_score = 0  # 변동성 낮음
@@ -130,164 +142,204 @@ def score_auxiliary_indicators(df):
         bbw_score = 2  # 변동성 높음
     total_score += bbw_score
 
-    return total_score  # 총합 스코어 반환
+    # 총 스코어를 기반으로 포지션 크기 결정
+    score_ratio = total_score / 6  # 최대 스코어 6점
+    position_size = max_position * score_ratio
 
-def determine_position_size(total_score, total_assets):
-    """총 스코어에 따라 포지션 크기를 결정합니다."""
-    max_score = 6  # 최대 스코어
-    if total_score <= 1:
-        return 0  # 포지션 진입 보류 또는 최소 크기로 진입
-    elif 2 <= total_score <= 3:
-        return (total_score / max_score) * 0.5 * total_assets  # 전체 자산의 (총 스코어 / 6) × 50%
+    return position_size
+
+def place_limit_order(ticker, side, price, volume):
+    """
+    지정가 주문을 제출하는 함수
+    """
+    if side == 'buy':
+        order = upbit.buy_limit_order(ticker, price, volume)
+    elif side == 'sell':
+        order = upbit.sell_limit_order(ticker, price, volume)
     else:
-        return (total_score / max_score) * total_assets  # 전체 자산의 (총 스코어 / 6) × 100%
+        return None
+    return order
 
-def set_stop_loss_take_profit(entry_price, atr, bbw_level):
-    """손절매와 이익 실현 지점을 설정합니다."""
-    # 변동성에 따라 손절매와 이익 실현 지점 계산
-    if bbw_level > 1.2:
-        sl_distance = atr * 1.5  # 변동성 높음
-        tp_distance = atr * 3
-    elif bbw_level < 0.8:
-        sl_distance = atr * 0.75  # 변동성 낮음
-        tp_distance = atr * 1.5
-    else:
-        sl_distance = atr  # 변동성 보통
-        tp_distance = atr * 2
+def cancel_order(uuid):
+    """
+    주문을 취소하는 함수
+    """
+    result = upbit.cancel_order(uuid)
+    return result
 
-    # 최소 및 최대 손절매 거리 설정 (진입 가격의 5% ~ 15%)
-    min_sl_distance = entry_price * 0.05  # 최소 손절매 거리 (5%)
-    max_sl_distance = entry_price * 0.15  # 최대 손절매 거리 (15%)
+def check_order_status(uuid):
+    """
+    주문의 체결 여부를 확인하는 함수
+    """
+    order = upbit.get_order(uuid)
+    return order['state'] == 'done'
 
-    # 실제 손절매 거리를 최소/최대로 제한
-    sl_distance = max(min_sl_distance, min(sl_distance, max_sl_distance))
+def calculate_max_position():
+    """
+    총 자산의 50%를 재설정하는 함수
+    """
+    # 보유 자산의 수량 조회
+    balance = upbit.get_balance(COIN_TICKER)
+    if balance is None:
+        raise ValueError("잔액 정보를 가져오는 데 실패했습니다.")
+    balance = float(balance)
 
-    # 손절매 가격 계산
-    stop_loss = entry_price - sl_distance
+    # 현재 가격 조회
+    price = pyupbit.get_current_price(COIN_TICKER)
+    if price is None:
+        raise ValueError("현재 가격 정보를 가져오는 데 실패했습니다.")
 
-    # 최소 및 최대 이익 실현 거리 설정 (진입 가격의 5% ~ 15%)
-    min_tp_distance = entry_price * 0.05  # 최소 이익 실현 거리 (5%)
-    max_tp_distance = entry_price * 0.15  # 최대 이익 실현 거리 (15%)
+    # 자산 평가 금액 계산
+    asset_value = balance * price
 
-    # 실제 이익 실현 거리를 최소/최대로 제한
-    tp_distance = max(min_tp_distance, min(tp_distance, max_tp_distance))
+    # max_position 설정 (총 자산의 50%)
+    max_position = asset_value * 0.5
+    return max_position
 
-    # 이익 실현 가격 계산
-    take_profit = entry_price + tp_distance
+def main():
+    # 거래 대상 종목 설정
+    ticker = COIN_TICKER
 
-    return stop_loss, take_profit
+    print("프로그램을 시작합니다.")
 
-def check_existing_position():
-    """현재 자산과 포지션 정보를 조회합니다."""
-    coin_balance = upbit.get_balance(COIN_TICKER)  # 해당 코인 보유 수량 조회
-    if coin_balance > 0:
-        position = 'LONG'  # 현재 포지션은 매수 상태
-        position_size = coin_balance
-        entry_price = upbit.get_avg_buy_price(COIN_TICKER)  # 평균 매수가를 가져옴
-        average_buy_price = entry_price  # 평균 구매가 저장
-        # 초기 손절매와 이익 실현 가격 설정
-        df_initial = get_recent_data(COIN_TICKER)
-        df_initial = calculate_indicators(df_initial)
-        bbw_level_initial = df_initial['bb_width'].iloc[-1] / df_initial['bb_width_ma'].iloc[-1]
-        atr_initial = df_initial['atr'].iloc[-1]
-        stop_loss, take_profit = set_stop_loss_take_profit(entry_price, atr_initial, bbw_level_initial)
-        log_to_slack(f"기존 포지션 발견: 진입 가격={entry_price}, 손절매={stop_loss}, 이익 실현={take_profit}")
-    else:
-        log_to_slack("현재 포지션이 없습니다.")
-        position = None  # 포지션 없음
-        position_size = 0
-        entry_price = 0
-        average_buy_price = 0
-        stop_loss = 0
-        take_profit = 0
-    return position, position_size, entry_price, average_buy_price, stop_loss, take_profit
+    # 초기 max_position 설정
+    max_position = calculate_max_position()
 
-# A. 기존 자산 확인 (함수 호출로 대체)
-try:
-    position, position_size, entry_price, average_buy_price, stop_loss, take_profit = check_existing_position()
-except Exception as e:
-    log_to_slack(f"초기화 중 에러 발생: {e}")
-    raise e
+    # 슬랙으로 자산 평가 금액 및 max_position 알림
+    message = f"총 자산 평가 금액: {max_position * 2:,.0f}원\n투자 한도(max_position): {max_position:,.0f}원"
+    send_slack_message(message)
 
-# B. 반복문 시작
-while True:
-    try:
-        # B. 데이터 수집
-        df = get_recent_data(COIN_TICKER)
-        df = calculate_indicators(df)
-        current_price = df['close'].iloc[-1]  # 현재 가격
+    # 초기 데이터 수집
+    df = get_historical_data(ticker, interval='minute1', count=200)
+    if df is None or df.empty:
+        raise ValueError("과거 데이터를 가져오는 데 실패했습니다.")
+    df = calculate_indicators(df)
 
-        # C. 매수/매도 조건 판단
-        buy_signal, sell_signal = check_core_conditions(df)
+    # 매수한 포지션 정보를 저장할 변수
+    position = {
+        'avg_buy_price': 0,  # 평균 매수가
+        'volume': 0,         # 보유 수량
+        'stop_loss_price': 0,    # 손절매 가격
+        'take_profit_price': 0   # 이익 실현 가격
+    }
 
-        if position == 'LONG':
-            # 손절매와 이익 실현 가격 모니터링
-            if current_price <= stop_loss:
-                # G. 손절매 실행
-                amount = upbit.get_balance(COIN_TICKER)
-                upbit.sell_market_order(COIN_TICKER, amount)
-                log_to_slack(f"손절매 발동. {COIN_TICKER} {amount}개를 {current_price}원에 매도했습니다.")
-                position = None  # 포지션 종료
-            elif current_price >= take_profit:
-                # G. 이익 실현 실행
-                amount = upbit.get_balance(COIN_TICKER)
-                upbit.sell_market_order(COIN_TICKER, amount)
-                log_to_slack(f"이익 실현 지점 도달. {COIN_TICKER} {amount}개를 {current_price}원에 매도했습니다.")
-                position = None
-            elif sell_signal and (current_price >= average_buy_price * (1 + MIN_PROFIT_PERCENT)):
-                # G. 매도 신호 발생 및 평균 구매가 대비 일정 % 이상 상승한 경우 매도
-                amount = upbit.get_balance(COIN_TICKER)
-                upbit.sell_market_order(COIN_TICKER, amount)
-                profit_percent = ((current_price - average_buy_price) / average_buy_price) * 100
-                log_to_slack(f"매도 신호 감지 및 최소 이익 달성. {COIN_TICKER} {amount}개를 {current_price}원에 매도했습니다. 이익률: {profit_percent:.2f}%")
-                position = None
-            else:
-                # I. 포지션 유지
-                print("포지션을 유지합니다.")
-                time.sleep(10)
-                continue
-        else:
-            if buy_signal:
-                # D. 포지션 크기 결정
-                total_score = score_auxiliary_indicators(df)
-                total_assets = upbit.get_balance('KRW')  # 보유 현금 조회
-                position_size = determine_position_size(total_score, total_assets)
-                if position_size > 0:
-                    # E. 매수 주문 실행
-                    desired_price = current_price  # 희망 가격 설정
-                    order_price = desired_price * 1.005  # 지정가 주문 가격 설정 (희망 가격의 1.005배)
-                    amount = position_size / order_price  # 매수 수량 계산
-                    upbit.buy_limit_order(COIN_TICKER, order_price, amount)  # 지정가 매수 주문
-                    log_to_slack(f"{COIN_TICKER} {amount}개를 {order_price}원에 지정가 매수 주문했습니다.")
-                    # F. 주문 체결 확인
-                    time.sleep(10)
-                    orders = upbit.get_order(COIN_TICKER)
-                    open_orders = [o for o in orders if o['side'] == 'bid']
-                    if not open_orders:
-                        # 주문 체결됨
-                        position = 'LONG'
-                        entry_price = upbit.get_avg_buy_price(COIN_TICKER)  # 평균 매수가 가져오기
-                        average_buy_price = entry_price  # 평균 구매가 저장
-                        bbw_level = df['bb_width'].iloc[-1] / df['bb_width_ma'].iloc[-1]
-                        atr = df['atr'].iloc[-1]
-                        stop_loss, take_profit = set_stop_loss_take_profit(entry_price, atr, bbw_level)
-                        log_to_slack(f"매수 주문 체결됨. 진입 가격={entry_price}, 손절매={stop_loss}, 이익 실현={take_profit}")
+    while True:
+        try:
+            # 실시간 데이터 추가
+            current_price, current_volume = get_current_data(ticker)
+            new_data = {
+                'close': current_price,
+                'volume': current_volume
+            }
+            df = df.append(new_data, ignore_index=True)
+            df = calculate_indicators(df)
+
+            # 매매 신호 생성
+            signal = generate_signals(df)
+
+            # 매수 신호 처리
+            if signal == 'buy' and position['volume'] == 0:
+                # 포지션 크기 결정
+                position_size = calculate_position_size(df, max_position)
+                # 희망 가격 설정 (현재가)
+                desired_price = current_price
+                # 지정가 주문 가격 계산 (0.5% 상향)
+                order_price = desired_price * 1.005
+                # 주문 수량 계산 (소수점 8자리까지 표현)
+                volume = round(position_size / order_price, 8)
+                if volume == 0:
+                    send_slack_message("주문 수량이 0으로 계산되어 매수를 진행하지 않습니다.")
+                    continue
+                # 매수 주문 실행
+                order = place_limit_order(ticker, 'buy', order_price, volume)
+                if order is not None:
+                    order_uuid = order['uuid']
+                    send_slack_message(f"매수 주문 제출: {order}")
+
+                    # 20초 대기 후 주문 체결 확인
+                    time.sleep(20)
+                    if not check_order_status(order_uuid):
+                        cancel_order(order_uuid)
+                        send_slack_message("매수 주문 미체결로 취소됨")
                     else:
-                        # 주문 미체결, 주문 취소
-                        for order in open_orders:
-                            upbit.cancel_order(order['uuid'])
-                        log_to_slack("매수 주문이 체결되지 않아 취소되었습니다.")
+                        send_slack_message("매수 주문 체결 완료")
+                        # 평균 매수가 및 보유 수량 업데이트
+                        position['avg_buy_price'] = float(upbit.get_avg_buy_price(ticker))
+                        position['volume'] = float(upbit.get_balance(ticker))
+                        # 손절매 및 이익 실현 가격 설정
+                        position['stop_loss_price'] = position['avg_buy_price'] * 0.99  # 1% 손실 시 손절
+                        position['take_profit_price'] = position['avg_buy_price'] * 1.02  # 2% 이익 시 매도
                 else:
-                    print("총합 스코어가 낮아 포지션에 진입하지 않습니다.")
+                    send_slack_message("매수 주문 실패")
+
+            # 매도 신호 처리
+            elif signal == 'sell' and position['volume'] > 0:
+                # 현재 가격이 평균 매수가 대비 1% 이상 상승한 경우에만 매도
+                if current_price >= position['avg_buy_price'] * 1.01:
+                    # 지정가 주문 가격 계산 (0.5% 상향)
+                    order_price = current_price * 1.005
+                    # 매도 주문 실행
+                    order = place_limit_order(ticker, 'sell', order_price, position['volume'])
+                    if order is not None:
+                        order_uuid = order['uuid']
+                        send_slack_message(f"매도 주문 제출: {order}")
+
+                        # 20초 대기 후 주문 체결 확인
+                        time.sleep(20)
+                        if not check_order_status(order_uuid):
+                            cancel_order(order_uuid)
+                            send_slack_message("매도 주문 미체결로 취소됨")
+                        else:
+                            send_slack_message("매도 주문 체결 완료")
+                            # 포지션 정보 초기화
+                            position = {'avg_buy_price': 0, 'volume': 0, 'stop_loss_price': 0, 'take_profit_price': 0}
+                            # 매도 후 max_position 재설정
+                            max_position = calculate_max_position()
+                            send_slack_message(f"매도 후 max_position 재설정: {max_position:,.0f}원")
+                    else:
+                        send_slack_message("매도 주문 실패")
+                else:
+                    send_slack_message("현재 가격이 평균 매수가 대비 1% 이상 상승하지 않아 매도하지 않음")
+
+            # 손절매 및 이익 실현 조건 확인
+            if position['volume'] > 0:
+                # 손절매 조건
+                if current_price <= position['stop_loss_price']:
+                    send_slack_message("손절매 조건 충족, 시장가 매도 진행")
+                    upbit.sell_market_order(ticker, position['volume'])
+                    # 포지션 정보 초기화
+                    position = {'avg_buy_price': 0, 'volume': 0, 'stop_loss_price': 0, 'take_profit_price': 0}
+                    # 손절매 후 max_position 재설정
+                    max_position = calculate_max_position()
+                    send_slack_message(f"손절매 후 max_position 재설정: {max_position:,.0f}원")
+
+                # 이익 실현 조건
+                elif current_price >= position['take_profit_price']:
+                    send_slack_message("이익 실현 조건 충족, 시장가 매도 진행")
+                    upbit.sell_market_order(ticker, position['volume'])
+                    # 포지션 정보 초기화
+                    position = {'avg_buy_price': 0, 'volume': 0, 'stop_loss_price': 0, 'take_profit_price': 0}
+                    # 이익 실현 후 max_position 재설정
+                    max_position = calculate_max_position()
+                    send_slack_message(f"이익 실현 후 max_position 재설정: {max_position:,.0f}원")
+
             else:
-                # I. 매수 조건 미충족, 대기
-                print("매수 신호가 없습니다. 대기합니다.")
-                time.sleep(10)
-                continue
+                print("매매 신호 없음")
 
-        # J. 반복문 지연
-        time.sleep(20)
+            # 데이터 프레임 관리 (최대 행 수 제한)
+            if len(df) > 200:
+                df = df.iloc[-200:].reset_index(drop=True)
 
-    except Exception as e:
-        log_to_slack(f"에러 발생: {e}")
-        time.sleep(20)
+            # 10초 대기
+            time.sleep(10)
+
+        except Exception as e:
+            # 에러 발생 시 슬랙으로 알림 전송
+            send_slack_message(f"에러 발생: {e}")
+            # 에러 메시지 출력
+            print(f"에러 발생: {e}")
+            # 60초 대기 후 재시도
+            time.sleep(60)
+
+if __name__ == "__main__":
+    main()
