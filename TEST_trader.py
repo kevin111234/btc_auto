@@ -80,17 +80,13 @@ def check_core_conditions(df):
     # 매수 조건 확인
     buy = (
         prev['rsi'] <= 30 and last['rsi'] > prev['rsi'] and  # RSI가 30 이하에서 상승 반전
-        prev['close'] <= prev['bb_lower'] and last['close'] > prev['close'] and  # 가격이 볼린저 밴드 하단을 터치 또는 하향 돌파 후 반등
-        prev['percent_b'] <= 0 and last['percent_b'] > prev['percent_b'] and  # %B 지표가 0 이하에서 상승
-        prev['bb_width'] <= prev['bb_width_ma'] and last['bb_width'] > last['bb_width_ma']  # BBW가 자신의 이동평균을 상향 돌파
+        prev['close'] <= prev['bb_lower'] and last['close'] > prev['close'] # 가격이 볼린저 밴드 하단을 터치 또는 하향 돌파 후 반등
     )
 
     # 매도 조건 확인
     sell = (
         prev['rsi'] >= 70 and last['rsi'] < prev['rsi'] and  # RSI가 70 이상에서 하락 반전
-        prev['close'] >= prev['bb_upper'] and last['close'] < prev['close'] and  # 가격이 볼린저 밴드 상단을 터치 또는 상향 돌파 후 하락
-        prev['percent_b'] >= 1 and last['percent_b'] < prev['percent_b'] and  # %B 지표가 1 이상에서 하락
-        prev['bb_width'] >= prev['bb_width_ma'] and last['bb_width'] < last['bb_width_ma']  # BBW가 자신의 이동평균을 하향 돌파
+        prev['close'] >= prev['bb_upper'] and last['close'] < prev['close'] # 가격이 볼린저 밴드 상단을 터치 또는 상향 돌파 후 하락
     )
 
     return buy, sell
