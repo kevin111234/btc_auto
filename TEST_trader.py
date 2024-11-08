@@ -94,10 +94,11 @@ def generate_signals(df):
     last = df.iloc[-1]
 
     # 매수 조건: 가격이 볼린저 밴드 하단을 하향 돌파하고 RSI가 30 이하인 경우
-    if last['close'] < last['bb_lower'] and last['rsi'] < 30:
+    if last['close'] <= last['bb_lower'] and last['rsi'] < 30:
+        print(f"가격 {last['close']} 에서 rsi {last['rsi']}")
         return 'buy'
     # 매도 조건: 가격이 볼린저 밴드 상단을 상향 돌파하고 RSI가 70 이상인 경우
-    elif last['close'] > last['bb_upper'] and last['rsi'] > 70:
+    elif last['close'] >= last['bb_upper'] and last['rsi'] > 70:
         return 'sell'
     else:
         return 'hold'
@@ -134,7 +135,7 @@ def calculate_position_size(df, max_position):
     total_score += obv_score
 
     # BBW 스코어링
-    last['bb_width'] = last['bb_upper'] - last['bb_lower']  # 현재 BBW 계산
+    df.loc[df.index[-1], 'bb_width'] = df.loc[df.index[-1], 'bb_upper'] - df.loc[df.index[-1], 'bb_lower']  # 현재 BBW 계산
     avg_bb_width = df['bb_width'].rolling(window=20).mean().iloc[-1]  # 20기간 평균 BBW
     bbw_level = last['bb_width'] / avg_bb_width  # BBW 수준 평가
     bbw_score = 0
@@ -183,8 +184,10 @@ def calculate_max_position():
     총 자산의 50%를 재설정하는 함수
     """
     # 보유 자산의 수량 조회
-    btc_balance = upbit.get_balance('KRW-BTC')
-    eth_balance = upbit.get_balance('KRW-ETH')
+    btc_balance_raw = upbit.get_balance('BTC')
+    btc_balance = float(btc_balance_raw) if btc_balance_raw is not None else 0.0
+    eth_balance_raw = upbit.get_balance('ETH')
+    eth_balance = float(eth_balance_raw) if eth_balance_raw is not None else 0.0
     krw_balance = upbit.get_balance('KRW')
 
     if btc_balance is None or eth_balance is None or krw_balance is None:
@@ -205,17 +208,14 @@ def calculate_max_position():
     eth_value = eth_balance * eth_price
     total_asset_value = btc_value + eth_value + krw_balance
 
-    # max_position 설정 (총 자산의 50%)
-    max_position = total_asset_value * 0.5
+    # max_position 설정 (총 자산의 48%)
+    max_position = total_asset_value * 0.48
 
-    # 슬랙으로 자산 평가 금액 및 max_position 알림
-    message = f"""총 자산 평가 금액: {max_position * 2:,.0f}원
-    투자 한도(max_position): {max_position:,.0f}원
-    보유 현금: {krw_balance:,.0f}원
-    보유 BTC 평가 금액: {btc_value:,.0f}원
-    보유 ETH 평가 금액: {eth_value:,.0f}원"""
-    send_slack_message(message)
-
+    print(f"""
+    현금 보유량: {krw_balance}
+    BTC 보유량:  {btc_value}
+    ETH 보유량:  {eth_value}
+    """)
     return max_position
 
 def main():
@@ -227,8 +227,13 @@ def main():
     # 초기 max_position 설정
     max_position = calculate_max_position()
 
+    # 슬랙으로 자산 평가 금액 및 max_position 알림
+    message = f"""총 자산 평가 금액: {max_position * 25 / 12:,.0f}원
+    투자 한도(max_position): {max_position:,.0f}원"""
+    send_slack_message(message)
+
     # 초기 데이터 수집
-    df = get_historical_data(ticker, interval='minute5', count=200)
+    df = get_historical_data(ticker, interval='minute1', count=200)
     if df is None or df.empty:
         raise ValueError("과거 데이터를 가져오는 데 실패했습니다.")
     df = calculate_indicators(df)
@@ -249,7 +254,7 @@ def main():
                 'close': current_price,
                 'volume': current_volume
             }
-            df = df.append(new_data, ignore_index=True)
+            df = pd.concat([df, pd.DataFrame([new_data])], ignore_index=True)
             df = calculate_indicators(df)
 
             # 매매 신호 생성
@@ -357,7 +362,7 @@ def main():
             # 에러 메시지 출력
             print(f"에러 발생: {e}")
             # 60초 대기 후 재시도
-            time.sleep(10)
+            time.sleep(60)
 
 if __name__ == "__main__":
     main()
