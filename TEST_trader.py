@@ -184,8 +184,10 @@ def calculate_max_position():
     총 자산의 50%를 재설정하는 함수
     """
     # 보유 자산의 수량 조회
-    btc_balance = upbit.get_balance('KRW-BTC')
-    eth_balance = upbit.get_balance('KRW-ETH')
+    btc_balance_raw = upbit.get_balance('BTC')
+    btc_balance = float(btc_balance_raw) if btc_balance_raw is not None else 0.0
+    eth_balance_raw = upbit.get_balance('ETH')
+    eth_balance = float(eth_balance_raw) if eth_balance_raw is not None else 0.0
     krw_balance = upbit.get_balance('KRW')
 
     if btc_balance is None or eth_balance is None or krw_balance is None:
@@ -226,7 +228,7 @@ def main():
     max_position = calculate_max_position()
 
     # 슬랙으로 자산 평가 금액 및 max_position 알림
-    message = f"""총 자산 평가 금액: {max_position * 2:,.0f}원
+    message = f"""총 자산 평가 금액: {max_position * 25 / 12:,.0f}원
     투자 한도(max_position): {max_position:,.0f}원"""
     send_slack_message(message)
 
