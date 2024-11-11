@@ -14,6 +14,7 @@ ACCESS_KEY = os.getenv('UPBIT_ACCESS_KEY')
 SECRET_KEY = os.getenv('UPBIT_SECRET_KEY')
 SLACK_TOKEN = os.getenv('SLACK_API_TOKEN')
 SLACK_CHANNEL = os.getenv('SLACK_CHANNEL_ID')
+COIN_TICKER = os.getenv('COIN_TICKER')
 
 # 거래할 코인 티커 설정
 TICKERS = ['KRW-BTC', 'KRW-ETH']
@@ -139,8 +140,8 @@ def send_asset_info(asset_info):
 
 def main():
     print("프로그램을 시작합니다.")
-    traders = {ticker: CoinTrader(ticker) for ticker in TICKERS}
-    
+    trader = CoinTrader(COIN_TICKER)
+        
     # 초기 자산 정보 조회
     asset_info = get_asset_info(upbit)
     send_asset_info(asset_info)
@@ -150,57 +151,50 @@ def main():
     
     while True:
         try:
-            # 각 코인별 매매 신호 확인 및 주문 실행
-            for ticker, trader in traders.items():
-                try:
-                    # 가격 데이터 조회
-                    df = pyupbit.get_ohlcv(ticker, interval="minute5", count=100)
-                    
-                    # 지표 계산
-                    rsi, upper_band, middle_band, lower_band = trader.calculate_indicators(df)
-                    current_price = pyupbit.get_current_price(ticker)
-                    
-                    # 매매 신호 판단
-                    buy_signal = (rsi <= 35 and current_price <= lower_band)
-                    sell_signal = (rsi >= 65 and current_price >= upper_band)
-                    
-                    limit_amount = asset_info['limit_amount_per_coin']
-                    
-                    if asset_info is None:
-                        continue
-                    
-                    if buy_signal:
+            # 가격 데이터 조회
+            df = pyupbit.get_ohlcv(COIN_TICKER, interval="minute5", count=100)
+            
+            # 지표 계산
+            rsi, upper_band, middle_band, lower_band = trader.calculate_indicators(df)
+            current_price = pyupbit.get_current_price(COIN_TICKER)
+            
+            # 매매 신호 판단
+            buy_signal = (rsi <= 35 and current_price <= lower_band)
+            sell_signal = (rsi >= 65 and current_price >= upper_band)
+            
+            limit_amount = asset_info['limit_amount_per_coin']
+            
+            if asset_info is None:
+                continue
+            
+            if buy_signal:
+                asset_info = get_asset_info(upbit)
+                position_size = trader.get_position_size(rsi, limit_amount)
+                if position_size > 0 and asset_info['krw_balance'] >= position_size:
+                    order = upbit.buy_market_order(COIN_TICKER, position_size)
+                    time.sleep(10)
+                    if order:
+                        message = f"[{COIN_TICKER}] 매수 주문 체결\n금액: {position_size:,.0f}원\nRSI: {rsi:.2f}"
+                        send_slack_message(message)
                         asset_info = get_asset_info(upbit)
-                        position_size = trader.get_position_size(rsi, limit_amount)
-                        if position_size > 0 and asset_info['krw_balance'] >= position_size:
-                            order = upbit.buy_market_order(ticker, position_size)
-                            time.sleep(10)
-                            if order:
-                                message = f"[{ticker}] 매수 주문 체결\n금액: {position_size:,.0f}원\nRSI: {rsi:.2f}"
-                                send_slack_message(message)
-                                asset_info = get_asset_info(upbit)
-                                send_asset_info(asset_info)
-                    
-                    elif sell_signal:
+                        send_asset_info(asset_info)
+            
+            elif sell_signal:
+                asset_info = get_asset_info(upbit)
+                coin_balance = asset_info['coin_info'][trader.currency]['balance']
+                position_size = trader.get_position_size(100-rsi, limit_amount)
+                sell_amount = min(position_size / current_price, coin_balance)
+                if sell_amount > 0:
+                    order = upbit.sell_market_order(COIN_TICKER, sell_amount)
+                    time.sleep(10)
+                    if order:
+                        message = f"[{COIN_TICKER}] 매도 주문 체결\n수량: {sell_amount:.8f}\nRSI: {rsi:.2f}"
+                        send_slack_message(message)
                         asset_info = get_asset_info(upbit)
-                        coin_balance = asset_info['coin_info'][trader.currency]['balance']
-                        position_size = trader.get_position_size(100-rsi, limit_amount)
-                        sell_amount = min(position_size / current_price, coin_balance)
-                        if sell_amount > 0:
-                            order = upbit.sell_market_order(ticker, sell_amount)
-                            time.sleep(10)
-                            if order:
-                                message = f"[{ticker}] 매도 주문 체결\n수량: {sell_amount:.8f}\nRSI: {rsi:.2f}"
-                                send_slack_message(message)
-                                asset_info = get_asset_info(upbit)
-                                send_asset_info(asset_info)
-                    else:
-                      print("매수/매도 신호가 없습니다. 기회 탐색중...")
+                        send_asset_info(asset_info)
+            else:
+                print("매수/매도 신호가 없습니다. 기회 탐색중...")
                 
-                except Exception as e:
-                    send_slack_message(f"{ticker} 매매 처리 중 에러 발생: {str(e)}")
-                    
-            time.sleep(10)
             
         except Exception as e:
             send_slack_message(f"메인 루프 에러: {str(e)}")
