@@ -69,11 +69,9 @@ def get_asset_info(upbit):
     try:
         balances = upbit.get_balances()
         
-        # KRW 잔고 조회
         krw_balance = float(next((balance['balance'] for balance in balances 
                                 if balance['currency'] == 'KRW'), 0))
         
-        # 코인별 정보 수집
         coin_info = {}
         total_asset = krw_balance
 
@@ -81,13 +79,11 @@ def get_asset_info(upbit):
             currency = ticker.split('-')[1]
             current_price = pyupbit.get_current_price(ticker)
             
-            # 코인 잔고 및 평균 매수가 조회
             coin_balance = float(next((balance['balance'] for balance in balances 
                                       if balance['currency'] == currency), 0))
             avg_buy_price = float(next((balance['avg_buy_price'] for balance in balances 
                                       if balance['currency'] == currency), 0))
             
-            # 코인별 정보 저장
             coin_value = coin_balance * current_price
             total_asset += coin_value
             
@@ -101,32 +97,7 @@ def get_asset_info(upbit):
                 'profit_rate': profit_rate
             }
 
-        # 투자 한도 계산 (총 자산의 48%를 두 코인에 24%씩 할당)
         limit_amount_per_coin = total_asset * 0.48
-
-        # Slack 메시지 작성
-        message = f"""
-📊 자산 현황 보고
-──────────────
-💰 보유 KRW: {krw_balance:,.0f}원
-──────────────"""
-
-        for currency, info in coin_info.items():
-            message += f"""
-🪙 {currency}:
-수량: {info['balance']:.8f}
-평균매수가: {info['avg_price']:,.0f}원
-현재가격: {info['current_price']:,.0f}원
-평가금액: {info['value']:,.0f}원
-수익률: {info['profit_rate']:.2f}%
-──────────────"""
-
-        message += f"""
-💵 총 자산: {total_asset:,.0f}원
-⚖️ 코인당 투자한도: {limit_amount_per_coin:,.0f}원
-"""
-
-        send_slack_message(message)
         
         return {
             'krw_balance': krw_balance,
@@ -136,8 +107,35 @@ def get_asset_info(upbit):
         }
 
     except Exception as e:
-        send_slack_message(f"자산 정보 조회 중 에러 발생: {str(e)}")
+        print(f"자산 정보 조회 중 에러 발생: {str(e)}")
         return None
+
+def send_asset_info(asset_info):
+    if asset_info is None:
+        return
+        
+    message = f"""
+📊 자산 현황 보고
+──────────────
+💰 보유 KRW: {asset_info['krw_balance']:,.0f}원
+──────────────"""
+
+    for currency, info in asset_info['coin_info'].items():
+        message += f"""
+🪙 {currency}:
+수량: {info['balance']:.8f}
+평균매수가: {info['avg_price']:,.0f}원
+현재가격: {info['current_price']:,.0f}원
+평가금액: {info['value']:,.0f}원
+수익률: {info['profit_rate']:.2f}%
+──────────────"""
+
+    message += f"""
+💵 총 자산: {asset_info['total_asset']:,.0f}원
+⚖️ 코인당 투자한도: {asset_info['limit_amount_per_coin']:,.0f}원
+"""
+
+    send_slack_message(message)
 
 def main():
     print("프로그램을 시작합니다.")
@@ -145,6 +143,7 @@ def main():
     
     # 초기 자산 정보 조회
     asset_info = get_asset_info(upbit)
+    send_asset_info(asset_info)
     if asset_info is None:
         print("초기 자산 정보 조회 실패. 프로그램을 종료합니다.")
         return
@@ -167,32 +166,34 @@ def main():
                     
                     limit_amount = asset_info['limit_amount_per_coin']
                     
-                    if buy_signal or sell_signal:
-                        # 매매 신호 발생 시 자산 정보 재조회
+                    if asset_info is None:
+                        continue
+                    
+                    if buy_signal:
                         asset_info = get_asset_info(upbit)
-                        if asset_info is None:
-                            continue
-                        
-                        if buy_signal:
-                            position_size = trader.get_position_size(rsi, limit_amount)
-                            if position_size > 0 and asset_info['krw_balance'] >= position_size:
-                                order = upbit.buy_market_order(ticker, position_size)
-                                time.sleep(10)
-                                if order:
-                                    message = f"[{ticker}] 매수 주문 체결\n금액: {position_size:,.0f}원\nRSI: {rsi:.2f}"
-                                    send_slack_message(message)
-                        
-                        elif sell_signal:
-                            coin_balance = asset_info['coin_info'][trader.currency]['balance']
-                            position_size = trader.get_position_size(100-rsi, limit_amount)
-                            sell_amount = min(position_size / current_price, coin_balance)
-                            
-                            if sell_amount > 0:
-                                order = upbit.sell_market_order(ticker, sell_amount)
-                                time.sleep(10)
-                                if order:
-                                    message = f"[{ticker}] 매도 주문 체결\n수량: {sell_amount:.8f}\nRSI: {rsi:.2f}"
-                                    send_slack_message(message)
+                        position_size = trader.get_position_size(rsi, limit_amount)
+                        if position_size > 0 and asset_info['krw_balance'] >= position_size:
+                            order = upbit.buy_market_order(ticker, position_size)
+                            time.sleep(10)
+                            if order:
+                                message = f"[{ticker}] 매수 주문 체결\n금액: {position_size:,.0f}원\nRSI: {rsi:.2f}"
+                                send_slack_message(message)
+                                asset_info = get_asset_info(upbit)
+                                send_asset_info(asset_info)
+                    
+                    elif sell_signal:
+                        asset_info = get_asset_info(upbit)
+                        coin_balance = asset_info['coin_info'][trader.currency]['balance']
+                        position_size = trader.get_position_size(100-rsi, limit_amount)
+                        sell_amount = min(position_size / current_price, coin_balance)
+                        if sell_amount > 0:
+                            order = upbit.sell_market_order(ticker, sell_amount)
+                            time.sleep(10)
+                            if order:
+                                message = f"[{ticker}] 매도 주문 체결\n수량: {sell_amount:.8f}\nRSI: {rsi:.2f}"
+                                send_slack_message(message)
+                                asset_info = get_asset_info(upbit)
+                                send_asset_info(asset_info)
                     else:
                       print("매수/매도 신호가 없습니다. 기회 탐색중...")
                 
