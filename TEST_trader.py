@@ -141,7 +141,7 @@ def send_asset_info(asset_info):
 def main():
     print("프로그램을 시작합니다.")
     trader = CoinTrader(COIN_TICKER)
-        
+
     # 초기 자산 정보 조회
     asset_info = get_asset_info(upbit)
     send_asset_info(asset_info)
@@ -151,6 +151,12 @@ def main():
     
     while True:
         try:
+            asset_info = get_asset_info(upbit)
+            if asset_info is None:
+                send_slack_message("자산 정보 조회 실패, 다시 시도합니다.")
+                time.sleep(10)
+                continue  # None일 경우 이후 코드 실행을 막기 위해 continue
+              
             # 가격 데이터 조회
             df = pyupbit.get_ohlcv(COIN_TICKER, interval="minute5", count=100)
             
@@ -163,9 +169,6 @@ def main():
             sell_signal = (rsi >= 65 and current_price >= upper_band)
             
             limit_amount = asset_info['limit_amount_per_coin']
-            
-            if asset_info is None:
-                continue
             
             if buy_signal:
                 asset_info = get_asset_info(upbit)
@@ -194,6 +197,7 @@ def main():
                         send_asset_info(asset_info)
             else:
                 print("매수/매도 신호가 없습니다. 기회 탐색중...")
+            time.sleep(10)
                 
             
         except Exception as e:
