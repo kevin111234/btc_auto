@@ -165,8 +165,14 @@ def main():
     while True:
         try:
             # 자산 데이터 조회
+            asset_info = get_asset_info(upbit)
+            if asset_info is None:
+                send_slack_message("자산 정보 조회 실패, 10초 대기 후 다시 시도합니다...")
+                time.sleep(10)
+                continue
             
             # 가격 데이터 조회
+            df = pyupbit.get_ohlcv(COIN_TICKER, interval="minute5", count=100)
 
             # 현재 가격 조회
 
