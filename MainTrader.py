@@ -82,13 +82,13 @@ def get_rsi(rsi):
       return 50
 
 def get_position_size(rsi, limit_amount):
-    if rsi <= 20:
+    if rsi == 20:
         return limit_amount * 0.4
-    elif rsi <= 25:
+    elif rsi == 25:
         return limit_amount * 0.3
-    elif rsi <= 30:
+    elif rsi == 30:
         return limit_amount * 0.2
-    elif rsi <= 35:
+    elif rsi == 35:
         return limit_amount * 0.1
     return 0
 
@@ -193,15 +193,30 @@ def main():
             # 매매 신호 판단
             buy_signal = (new_rsi <= 35 and current_price <= lower_band)
             sell_signal = (new_rsi >= 65 and current_price >= upper_band and current_price > float(asset_info['avg_price'])*1.01)
-
+            limit_amount = asset_info['limit_amount_per_coin']
             # 매수 진행
+            if buy_signal:
+                if new_rsi not in rsi_check:
+                    asset_info = get_asset_info(upbit)
+                    position_size = get_position_size(new_rsi, limit_amount)
+                    if position_size > 0 and asset_info['krw_balance'] >= position_size:
+                        order = upbit.buy_market_order(COIN_TICKER, position_size)
+                        message = f"매수 주문 완료. 현재가격: {current_price}"
+                        print(message)
+                        send_slack_message(message)
+                        time.sleep(10)
+                        if order:
+                            message = f"[{COIN_TICKER}] 매수 주문 체결\n금액: {position_size:,.0f}원\nRSI: {rsi:.2f}"
+                            send_slack_message(message)
+                            asset_info = get_asset_info(upbit)
+                            send_asset_info(asset_info)
 
-                # rsi 매매여부 체크(매수 시 추가)
+                            # rsi 매매여부 체크(매수 시 추가)
+                            rsi_check.append(new_rsi)
 
             # 매도 진행
 
                 # rsi 매매여부 체크(매도 시 삭제)
-            
 
             # 10초간 대기
             time.sleep(10)
