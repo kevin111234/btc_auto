@@ -80,3 +80,48 @@ def get_rsi(rsi):
         return 35
     else:
       return None
+
+def get_asset_info(upbit):
+    try:
+        balances = upbit.get_balances()
+        
+        krw_balance = float(next((balance['balance'] for balance in balances 
+                                if balance['currency'] == 'KRW'), 0))
+        
+        coin_info = {}
+        total_asset = krw_balance
+
+        for ticker in TICKERS:
+            currency = ticker.split('-')[1]
+            current_price = pyupbit.get_current_price(ticker)
+            
+            coin_balance = float(next((balance['balance'] for balance in balances 
+                                      if balance['currency'] == currency), 0))
+            avg_buy_price = float(next((balance['avg_buy_price'] for balance in balances 
+                                      if balance['currency'] == currency), 0))
+            
+            coin_value = coin_balance * current_price
+            total_asset += coin_value
+            
+            profit_rate = ((current_price - avg_buy_price) / avg_buy_price * 100) if avg_buy_price > 0 else 0
+            
+            coin_info[currency] = {
+                'balance': coin_balance,
+                'avg_price': avg_buy_price,
+                'current_price': current_price,
+                'value': coin_value,
+                'profit_rate': profit_rate
+            }
+
+        limit_amount_per_coin = total_asset * 0.48
+        
+        return {
+            'krw_balance': krw_balance,
+            'coin_info': coin_info,
+            'total_asset': total_asset,
+            'limit_amount_per_coin': limit_amount_per_coin
+        }
+
+    except Exception as e:
+        print(f"자산 정보 조회 중 에러 발생: {str(e)}")
+        return None
