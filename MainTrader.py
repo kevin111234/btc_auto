@@ -188,3 +188,6 @@ def main():
         except Exception as e:
             send_slack_message(f"메인 루프 에러: {str(e)}")
             time.sleep(10)
+
+if __name__ == "__main__":
+    main()
