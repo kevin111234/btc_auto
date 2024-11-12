@@ -64,3 +64,19 @@ def calculate_indicators(df):
     lower_band = rolling_mean - (rolling_std * 2)
 
     return rsi.iloc[-1], upper_band.iloc[-1], rolling_mean.iloc[-1], lower_band.iloc[-1]
+
+def get_rsi(rsi):
+    # 50 이상 rsi 반전
+    if rsi >= 50:
+        rsi = 100-rsi
+    # rsi 정규화
+    if rsi <= 20:
+        return 20
+    elif rsi <= 25:
+        return 25
+    elif rsi <= 30:
+        return 30
+    elif rsi <= 35:
+        return 35
+    else:
+      return None
