@@ -27,3 +27,40 @@ def send_slack_message(message):
         slack_client.chat_postMessage(channel=SLACK_CHANNEL_ID, text=message)
     except SlackApiError as e:
         print(f"Error sending message: {e.response['error']}")
+
+def calculate_indicators(df):
+    delta = df['close'].diff()
+    gains = delta.clip(lower=0)
+    losses = -delta.clip(upper=0)
+
+    n = 14  # 기간 설정
+
+    # 첫 번째 평균값 계산 (SMA)
+    avg_gain = gains[:n].mean()
+    avg_loss = losses[:n].mean()
+
+    # 이후 평균값 계산 (와일더의 방법)
+    avg_gain_list = [avg_gain]
+    avg_loss_list = [avg_loss]
+
+    for i in range(n, len(gains)):
+        gain = gains.iloc[i]
+        loss = losses.iloc[i]
+
+        avg_gain = ((avg_gain * (n - 1)) + gain) / n
+        avg_loss = ((avg_loss * (n - 1)) + loss) / n
+
+        avg_gain_list.append(avg_gain)
+        avg_loss_list.append(avg_loss)
+
+    # RS 및 RSI 계산
+    rs = pd.Series(avg_gain_list, index=delta.index[n:]) / pd.Series(avg_loss_list, index=delta.index[n:])
+    rsi = 100 - (100 / (1 + rs))
+
+    # 볼린저 밴드 계산
+    rolling_mean = df['close'].rolling(window=20).mean()
+    rolling_std = df['close'].rolling(window=20).std()
+    upper_band = rolling_mean + (rolling_std * 2)
+    lower_band = rolling_mean - (rolling_std * 2)
+
+    return rsi.iloc[-1], upper_band.iloc[-1], rolling_mean.iloc[-1], lower_band.iloc[-1]
