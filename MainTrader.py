@@ -57,13 +57,7 @@ def calculate_indicators(df):
     rs = pd.Series(avg_gain_list, index=delta.index[n-1:]) / pd.Series(avg_loss_list, index=delta.index[n-1:])
     rsi = 100 - (100 / (1 + rs))
 
-    # 볼린저 밴드 계산
-    rolling_mean = df['close'].rolling(window=20).mean()
-    rolling_std = df['close'].rolling(window=20).std()
-    upper_band = rolling_mean + (rolling_std * 2)
-    lower_band = rolling_mean - (rolling_std * 2)
-
-    return rsi.iloc[-1], upper_band.iloc[-1], rolling_mean.iloc[-1], lower_band.iloc[-1]
+    return rsi.iloc[-1]
 
 def get_rsi(rsi):
     # 50 이상 rsi 반전
@@ -190,13 +184,13 @@ def main():
 
             # 현재 가격 조회
             currency = COIN_TICKER.split('-')[1]
-            rsi, upper_band, middle_band, lower_band = calculate_indicators(df)
+            rsi = calculate_indicators(df)
             current_price = pyupbit.get_current_price(COIN_TICKER)
             new_rsi = get_rsi(rsi)
 
             # 매매 신호 판단
-            buy_signal = (rsi <= 35 and current_price <= lower_band)
-            sell_signal = (rsi >= 65 and current_price >= upper_band and 
+            buy_signal = (rsi <= 35)
+            sell_signal = (rsi >= 65 and 
                           current_price > float(asset_info['coin_info'][currency]['avg_price'])*1.01)
             limit_amount = asset_info['limit_amount_per_coin']
             # 매수 진행
