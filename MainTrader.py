@@ -124,7 +124,7 @@ def get_asset_info(upbit):
                 'profit_rate': profit_rate
             }
 
-        limit_amount_per_coin = total_asset * 0.48
+        limit_amount_per_coin = total_asset
         
         return {
             'krw_balance': krw_balance,
@@ -177,12 +177,13 @@ def main():
 
     while True:
         try:
-            # 자산 데이터 조회
-            asset_info = get_asset_info(upbit)
-            if asset_info is None:
-                send_slack_message("자산 정보 조회 실패, 10초 대기 후 다시 시도합니다...")
-                time.sleep(10)
-                continue
+            # 현재 구매한 자산이 없을때 자산 데이터 조회 후 구매한도 재설정
+            if len(rsi_check) == 0:
+                asset_info = get_asset_info(upbit)
+                if asset_info is None:
+                    send_slack_message("자산 정보 조회 실패, 10초 대기 후 다시 시도합니다...")
+                    time.sleep(10)
+                    continue
             
             # 가격 데이터 조회
             df = pyupbit.get_ohlcv(COIN_TICKER, interval="minute5", count=100)
