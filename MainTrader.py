@@ -161,3 +161,30 @@ def main():
     if asset_info is None:
         print("초기 자산 정보 조회 실패. 프로그램을 종료합니다.")
         return
+
+    while True:
+        try:
+            # 자산 데이터 조회
+            
+            # 가격 데이터 조회
+
+            # 현재 가격 조회
+
+            # 매매 신호 판단
+
+            # 매수 진행
+
+                # rsi 매매여부 체크(매수 시 추가)
+
+            # 매도 진행
+
+                # rsi 매매여부 체크(매도 시 삭제)
+            
+
+            # 10초간 대기
+            time.sleep(10)
+
+
+        except Exception as e:
+            send_slack_message(f"메인 루프 에러: {str(e)}")
+            time.sleep(10)
