@@ -158,6 +158,40 @@ def send_asset_info(asset_info):
 
     send_slack_message(message)
 
+# 주기적 상태점검 보고서 발송
+def send_status_update():
+    # 자산 정보 조회
+    asset_info = get_asset_info(upbit)
+    if asset_info is None:
+        send_slack_message("자산 정보를 가져오는 데 실패했습니다.")
+        return
+
+    # 상태 메시지 작성
+    message = f"""
+    📈 상태 점검 보고서
+    ──────────────
+    💰 보유 KRW: {asset_info['krw_balance']:,.0f}원
+    💵 총 자산: {asset_info['total_asset']:,.0f}원
+    ⚖️ 코인당 투자한도: {asset_info['limit_amount_per_coin']:,.0f}원
+    ──────────────
+    """
+    
+    # 각 코인 정보 추가
+    for currency, info in asset_info['coin_info'].items():
+        message += f"""
+        🪙 {currency}:
+        수량: {info['balance']:.8f}
+        평균매수가: {info['avg_price']:,.0f}원
+        현재가격: {info['current_price']:,.0f}원
+        평가금액: {info['value']:,.0f}원
+        수익률: {info['profit_rate']:.2f}%
+        ──────────────
+        """
+
+    # Slack으로 메시지 전송
+    send_slack_message(message)
+
+
 def main():
     rsi_check = []
     position_tracker = {}
