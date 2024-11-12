@@ -20,3 +20,10 @@ TICKERS = ['KRW-BTC', 'KRW-ETH']
 # Upbit, Slack 클라이언트 초기화
 upbit = pyupbit.Upbit(UPBIT_ACCESS_KEY, UPBIT_SECRET_KEY)
 slack_client = WebClient(token=SLACK_API_TOKEN)
+
+# SLACK 메시지 전송 함수
+def send_slack_message(message):
+    try:
+        slack_client.chat_postMessage(channel=SLACK_CHANNEL_ID, text=message)
+    except SlackApiError as e:
+        print(f"Error sending message: {e.response['error']}")
