@@ -125,3 +125,30 @@ def get_asset_info(upbit):
     except Exception as e:
         print(f"자산 정보 조회 중 에러 발생: {str(e)}")
         return None
+
+def send_asset_info(asset_info):
+    if asset_info is None:
+        return
+        
+    message = f"""
+📊 자산 현황 보고
+──────────────
+💰 보유 KRW: {asset_info['krw_balance']:,.0f}원
+──────────────"""
+
+    for currency, info in asset_info['coin_info'].items():
+        message += f"""
+🪙 {currency}:
+수량: {info['balance']:.8f}
+평균매수가: {info['avg_price']:,.0f}원
+현재가격: {info['current_price']:,.0f}원
+평가금액: {info['value']:,.0f}원
+수익률: {info['profit_rate']:.2f}%
+──────────────"""
+
+    message += f"""
+💵 총 자산: {asset_info['total_asset']:,.0f}원
+⚖️ 코인당 투자한도: {asset_info['limit_amount_per_coin']:,.0f}원
+"""
+
+    send_slack_message(message)
