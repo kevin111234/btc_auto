@@ -79,7 +79,7 @@ def get_rsi(rsi):
     elif rsi <= 35:
         return 35
     else:
-      return None
+      return 50
 
 def get_asset_info(upbit):
     try:
@@ -175,8 +175,13 @@ def main():
             df = pyupbit.get_ohlcv(COIN_TICKER, interval="minute5", count=100)
 
             # 현재 가격 조회
+            rsi, upper_band, middle_band, lower_band = calculate_indicators(df)
+            current_price = pyupbit.get_current_price(COIN_TICKER)
+            new_rsi = get_rsi(rsi)
 
             # 매매 신호 판단
+            buy_signal = (new_rsi <= 35 and current_price <= lower_band)
+            sell_signal = (new_rsi >= 65 and current_price >= upper_band and current_price > float(asset_info['avg_price'])*1.01)
 
             # 매수 진행
 
