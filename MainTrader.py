@@ -54,7 +54,7 @@ def calculate_indicators(df):
         avg_loss_list.append(avg_loss)
 
     # RS 및 RSI 계산
-    rs = pd.Series(avg_gain_list, index=delta.index[n:]) / pd.Series(avg_loss_list, index=delta.index[n:])
+    rs = pd.Series(avg_gain_list, index=delta.index[n-1:]) / pd.Series(avg_loss_list, index=delta.index[n-1:])
     rsi = 100 - (100 / (1 + rs))
 
     # 볼린저 밴드 계산
