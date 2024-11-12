@@ -188,13 +188,15 @@ def main():
             df = pyupbit.get_ohlcv(COIN_TICKER, interval="minute5", count=100)
 
             # 현재 가격 조회
+            currency = COIN_TICKER.split('-')[1]
             rsi, upper_band, middle_band, lower_band = calculate_indicators(df)
             current_price = pyupbit.get_current_price(COIN_TICKER)
             new_rsi = get_rsi(rsi)
 
             # 매매 신호 판단
             buy_signal = (rsi <= 35 and current_price <= lower_band)
-            sell_signal = (rsi >= 65 and current_price >= upper_band and current_price > float(asset_info['avg_price'])*1.01)
+            sell_signal = (rsi >= 65 and current_price >= upper_band and 
+                          current_price > float(asset_info['coin_info'][currency]['avg_price'])*1.01)
             limit_amount = asset_info['limit_amount_per_coin']
             # 매수 진행
             if buy_signal:
