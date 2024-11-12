@@ -81,15 +81,15 @@ def get_rsi(rsi):
     else:
       return 50
 
-def get_position_size(rsi, limit_amount):
+def get_position_size(rsi):
     if rsi == 20:
-        return limit_amount * 0.4
+        return 0.4
     elif rsi == 25:
-        return limit_amount * 0.3
+        return 0.3
     elif rsi == 30:
-        return limit_amount * 0.2
+        return 0.2
     elif rsi == 35:
-        return limit_amount * 0.1
+        return 0.1
     return 0
 
 def get_asset_info(upbit):
@@ -198,7 +198,7 @@ def main():
             if buy_signal:
                 if new_rsi not in rsi_check:
                     asset_info = get_asset_info(upbit)
-                    position_size = get_position_size(new_rsi, limit_amount)
+                    position_size = get_position_size(new_rsi)*limit_amount
                     if position_size > 0 and asset_info['krw_balance'] >= position_size:
                         order = upbit.buy_market_order(COIN_TICKER, position_size)
                         message = f"매수 주문 완료. 현재가격: {current_price}"
