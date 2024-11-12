@@ -81,6 +81,17 @@ def get_rsi(rsi):
     else:
       return 50
 
+def get_position_size(rsi, limit_amount):
+    if rsi <= 20:
+        return limit_amount * 0.4
+    elif rsi <= 25:
+        return limit_amount * 0.3
+    elif rsi <= 30:
+        return limit_amount * 0.2
+    elif rsi <= 35:
+        return limit_amount * 0.1
+    return 0
+
 def get_asset_info(upbit):
     try:
         balances = upbit.get_balances()
