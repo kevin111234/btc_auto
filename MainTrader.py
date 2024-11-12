@@ -152,3 +152,12 @@ def send_asset_info(asset_info):
 """
 
     send_slack_message(message)
+
+def main():
+    rsi_check = []
+    print(f"{COIN_TICKER} 자동투자 프로그램을 시작합니다.")
+    asset_info = get_asset_info(upbit)
+    send_asset_info(asset_info)
+    if asset_info is None:
+        print("초기 자산 정보 조회 실패. 프로그램을 종료합니다.")
+        return
