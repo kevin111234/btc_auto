@@ -206,14 +206,14 @@ def main():
     sendStatusTime = 180
     print(f"{COIN_TICKER} 자동투자 프로그램을 시작합니다.")
     initial_asset_info = get_asset_info(upbit)
-    send_asset_info(initial_asset_info)
+    limit_amount = get_limit_amount(upbit)
+    send_asset_info(initial_asset_info, limit_amount)
     if initial_asset_info is None:
         print("초기 자산 정보 조회 실패. 프로그램을 종료합니다.")
         return
     # 초기 자산의 BTC 보유 여부를 기준으로 매도 조건 설정
     initial_btc_balance = initial_asset_info['coin_info'].get('BTC', {}).get('balance', 0)
     has_initial_btc = initial_btc_balance > 0
-    limit_amount = get_limit_amount(upbit)
 
     while True:
         try:
@@ -225,8 +225,8 @@ def main():
 
             # 현재 구매한 자산이 없을때 자산 데이터 조회 후 구매한도 재설정
             if len(rsi_check) == 0:
-                asset_info = get_asset_info(upbit)
                 limit_amount = get_limit_amount(upbit)
+                asset_info = send_asset_info(initial_asset_info, limit_amount)
                 if asset_info is None:
                     send_slack_message("자산 정보 조회 실패, 10초 대기 후 다시 시도합니다...")
                     time.sleep(10)
@@ -273,7 +273,7 @@ def main():
                         message = f"[{COIN_TICKER}] 매수 주문 체결\n금액: {position_size:,.0f}원\nRSI: {rsi:.2f}"
                         send_slack_message(message)
                         asset_info = get_asset_info(upbit)
-                        send_asset_info(asset_info)
+                        send_asset_info(asset_info, limit_amount)
 
                         # rsi 매매여부 체크(매수 시 추가)
                         buy_amount = float(order['executed_volume'])
@@ -301,7 +301,7 @@ def main():
                         message = f"[{COIN_TICKER}] 매도 주문 체결\n수량: {sell_amount:.8f}\nRSI: {rsi:.2f}"
                         send_slack_message(message)
                         asset_info = get_asset_info(upbit)
-                        send_asset_info(asset_info)
+                        send_asset_info(asset_info, limit_amount)
 
                         # rsi 매매여부 체크(매도 시 삭제)
                         del position_tracker[new_rsi]
