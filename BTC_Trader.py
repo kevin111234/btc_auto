@@ -195,19 +195,30 @@ def send_status_update():
 def main():
     rsi_check = []
     position_tracker = {}
+    last_report_time = time.time()
 
     print(f"{COIN_TICKER} 자동투자 프로그램을 시작합니다.")
-    asset_info = get_asset_info(upbit)
-    send_asset_info(asset_info)
+    initial_asset_info = get_asset_info(upbit)
+    send_asset_info(initial_asset_info)
     if asset_info is None:
         print("초기 자산 정보 조회 실패. 프로그램을 종료합니다.")
         return
+    # 초기 자산의 BTC 보유 여부를 기준으로 매도 조건 설정
+    initial_btc_balance = initial_asset_info['coin_info'].get('BTC', {}).get('balance', 0)
+    has_initial_btc = initial_btc_balance > 0
 
     while True:
         try:
+            current_time = time.time()
+            # 매 시간 경과 보고 전송
+            if current_time - last_report_time >= 1800:  # 3600초 = 1시간
+                send_status_update()
+                last_report_time = current_time  # 보고 시간 업데이트
+
             # 현재 구매한 자산이 없을때 자산 데이터 조회 후 구매한도 재설정
             if len(rsi_check) == 0:
                 asset_info = get_asset_info(upbit)
+                send_asset_info(asset_info)
                 if asset_info is None:
                     send_slack_message("자산 정보 조회 실패, 10초 대기 후 다시 시도합니다...")
                     time.sleep(10)
@@ -227,52 +238,70 @@ def main():
             sell_signal = (rsi >= 65 and 
                           current_price > float(asset_info['coin_info'][currency]['avg_price'])*1.01)
             limit_amount = asset_info['limit_amount']
-            # 매수 진행
-            if buy_signal:
-                if new_rsi not in rsi_check:
-                    asset_info = get_asset_info(upbit)
-                    position_size = get_position_size(new_rsi)*limit_amount
-                    if position_size > 0 and asset_info['krw_balance'] >= position_size:
-                        order = upbit.buy_market_order(COIN_TICKER, position_size)
-                        message = f"매수 주문 완료. 현재가격: {current_price}"
-                        print(message)
-                        send_slack_message(message)
-                        time.sleep(10)
-                        if order:
-                            message = f"[{COIN_TICKER}] 매수 주문 체결\n금액: {position_size:,.0f}원\nRSI: {rsi:.2f}"
-                            send_slack_message(message)
-                            asset_info = get_asset_info(upbit)
-                            send_asset_info(asset_info)
 
-                            # rsi 매매여부 체크(매수 시 추가)
-                            buy_amount = float(order['executed_volume'])
-                            position_tracker[new_rsi] = buy_amount
-                            rsi_check.append(new_rsi)
+            # 초기 자산 정리
+            if has_initial_btc and rsi >= 70:
+                order = upbit.sell_market_order(COIN_TICKER, initial_btc_balance)
+                message = f"매도 주문 완료. 현재가격: {current_price}"
+                print(message)
+                send_slack_message(message)
+                time.sleep(10)
+                if order:
+                  message = f"초기 자산 매도 주문 체결\n수량: {initial_btc_balance:.8f}\nRSI: {rsi:.2f}"
+                  print(message)
+                  send_slack_message(message)
+                  has_initial_btc = False  # 초기 자산 정리 완료 후 재실행 방지
+
+            # 매수 진행
+            if buy_signal and new_rsi not in rsi_check:
+                asset_info = get_asset_info(upbit)
+                position_size = get_position_size(new_rsi)*limit_amount
+                if position_size > 0 and asset_info['krw_balance'] >= position_size:
+                    order = upbit.buy_market_order(COIN_TICKER, position_size)
+                    message = f"매수 주문 완료. 현재가격: {current_price}"
+                    print(message)
+                    send_slack_message(message)
+                    time.sleep(10)
+                    if order:
+                        message = f"[{COIN_TICKER}] 매수 주문 체결\n금액: {position_size:,.0f}원\nRSI: {rsi:.2f}"
+                        send_slack_message(message)
+                        asset_info = get_asset_info(upbit)
+                        send_asset_info(asset_info)
+
+                        # rsi 매매여부 체크(매수 시 추가)
+                        buy_amount = float(order['executed_volume'])
+                        position_tracker[new_rsi] = buy_amount
+                        rsi_check.append(new_rsi)
+
+                        print(position_tracker)
+                        print(rsi_check)
 
             # 매도 진행
-            elif sell_signal:
-                if new_rsi in rsi_check:
-                    asset_info = get_asset_info(upbit)
-                    currency = COIN_TICKER.split('-')[1]
-                    
-                    # 해당 RSI 레벨에서 매수했던 수량 계산
-                    sell_amount = position_tracker[new_rsi]
-                    
-                    if sell_amount > 0:
-                        order = upbit.sell_market_order(COIN_TICKER, sell_amount)
-                        message = f"매도 주문 완료. 현재가격: {current_price}"
-                        print(message)
+            elif sell_signal and new_rsi in rsi_check:
+                asset_info = get_asset_info(upbit)
+                currency = COIN_TICKER.split('-')[1]
+                
+                # 해당 RSI 레벨에서 매수했던 수량 계산
+                sell_amount = position_tracker[new_rsi]
+                
+                if sell_amount > 0:
+                    order = upbit.sell_market_order(COIN_TICKER, sell_amount)
+                    message = f"매도 주문 완료. 현재가격: {current_price}"
+                    print(message)
+                    send_slack_message(message)
+                    time.sleep(10)
+                    if order:
+                        message = f"[{COIN_TICKER}] 매도 주문 체결\n수량: {sell_amount:.8f}\nRSI: {rsi:.2f}"
                         send_slack_message(message)
-                        time.sleep(10)
-                        if order:
-                            message = f"[{COIN_TICKER}] 매도 주문 체결\n수량: {sell_amount:.8f}\nRSI: {rsi:.2f}"
-                            send_slack_message(message)
-                            asset_info = get_asset_info(upbit)
-                            send_asset_info(asset_info)
+                        asset_info = get_asset_info(upbit)
+                        send_asset_info(asset_info)
 
-                            # rsi 매매여부 체크(매도 시 삭제)
-                            del position_tracker[new_rsi]
-                            rsi_check.remove(new_rsi)
+                        # rsi 매매여부 체크(매도 시 삭제)
+                        del position_tracker[new_rsi]
+                        rsi_check.remove(new_rsi)
+
+                        print(position_tracker)
+                        print(rsi_check)
             else:
                 print("매수/매도 신호가 없습니다. 기회 탐색중...")
 
