@@ -234,10 +234,17 @@ def main():
             # 초기 자산 정리
             if has_initial_btc and rsi >= 70:
                 order = upbit.sell_market_order(COIN_TICKER, initial_btc_balance)
-                message = f"초기 자산 매도 주문 체결\n수량: {initial_btc_balance:.8f}\nRSI: {rsi:.2f}"
+                message = f"매도 주문 완료. 현재가격: {current_price}"
                 print(message)
                 send_slack_message(message)
-                has_initial_btc = False  # 초기 자산 정리 완료 후 재실행 방지
+                time.sleep(10)
+                if order:
+                  message = f"초기 자산 매도 주문 체결\n수량: {initial_btc_balance:.8f}\nRSI: {rsi:.2f}"
+                  print(message)
+                  send_slack_message(message)
+                  has_initial_btc = False  # 초기 자산 정리 완료 후 재실행 방지
+                  asset_info = get_asset_info(upbit)
+                  send_asset_info(asset_info)
 
             # 매수 진행
             if buy_signal and new_rsi not in rsi_check:
