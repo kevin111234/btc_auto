@@ -200,7 +200,7 @@ def main():
     print(f"{COIN_TICKER} 자동투자 프로그램을 시작합니다.")
     initial_asset_info = get_asset_info(upbit)
     send_asset_info(initial_asset_info)
-    if asset_info is None:
+    if initial_asset_info is None:
         print("초기 자산 정보 조회 실패. 프로그램을 종료합니다.")
         return
     # 초기 자산의 BTC 보유 여부를 기준으로 매도 조건 설정
