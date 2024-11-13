@@ -3,7 +3,5 @@ pandas
 pyupbit 
 python-dotenv 
 requests
-tqdm
 pandas_ta
 slack_sdk
-ta
