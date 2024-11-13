@@ -266,6 +266,9 @@ def main():
                         position_tracker[new_rsi] = buy_amount
                         rsi_check.append(new_rsi)
 
+                        print(position_tracker)
+                        print(rsi_check)
+
             # 매도 진행
             elif sell_signal and new_rsi in rsi_check:
                 asset_info = get_asset_info(upbit)
@@ -289,6 +292,9 @@ def main():
                         # rsi 매매여부 체크(매도 시 삭제)
                         del position_tracker[new_rsi]
                         rsi_check.remove(new_rsi)
+
+                        print(position_tracker)
+                        print(rsi_check)
             else:
                 print("매수/매도 신호가 없습니다. 기회 탐색중...")
 
