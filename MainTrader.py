@@ -15,7 +15,7 @@ SLACK_CHANNEL_ID = os.getenv('SLACK_CHANNEL_ID')
 COIN_TICKER = os.getenv('COIN_TICKER')
 
 # 거래중인 코인 티커 목록
-TICKERS = ['KRW-BTC', 'KRW-ETH']
+TICKERS = ['KRW-BTC']
 
 # Upbit, Slack 클라이언트 초기화
 upbit = pyupbit.Upbit(UPBIT_ACCESS_KEY, UPBIT_SECRET_KEY)
