@@ -195,8 +195,7 @@ def send_status_update():
 def main():
     rsi_check = []
     position_tracker = {}
-    last_report_time = time.time()
-
+    sendStatusTime = 180
     print(f"{COIN_TICKER} 자동투자 프로그램을 시작합니다.")
     initial_asset_info = get_asset_info(upbit)
     send_asset_info(initial_asset_info)
@@ -209,11 +208,11 @@ def main():
 
     while True:
         try:
-            current_time = time.time()
             # 매 시간 경과 보고 전송
-            if current_time - last_report_time >= 1800:  # 3600초 = 1시간
+            sendStatusTime -= 1
+            if sendStatusTime == 0:
                 send_status_update()
-                last_report_time = current_time  # 보고 시간 업데이트
+                sendStatusTime = 180
 
             # 현재 구매한 자산이 없을때 자산 데이터 조회 후 구매한도 재설정
             if len(rsi_check) == 0:
