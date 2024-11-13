@@ -86,6 +86,17 @@ def get_position_size(rsi):
         return 0.1
     return 0
 
+def get_limit_amount(upbit):
+    """원화 잔액을 기반으로 limit_amount를 계산"""
+    try:
+        balances = upbit.get_balances()
+        krw_balance = float(next((balance['balance'] for balance in balances 
+                                  if balance['currency'] == 'KRW'), 0))
+        return krw_balance
+    except Exception as e:
+        print(f"Limit amount 조회 중 에러 발생: {str(e)}")
+        return 0
+
 def get_asset_info(upbit):
     try:
         balances = upbit.get_balances()
@@ -118,20 +129,17 @@ def get_asset_info(upbit):
                 'profit_rate': profit_rate
             }
 
-        limit_amount = krw_balance
-        
         return {
             'krw_balance': krw_balance,
             'coin_info': coin_info,
-            'total_asset': total_asset,
-            'limit_amount': limit_amount
+            'total_asset': total_asset
         }
 
     except Exception as e:
         print(f"자산 정보 조회 중 에러 발생: {str(e)}")
         return None
 
-def send_asset_info(asset_info):
+def send_asset_info(asset_info, limit_amount):
     if asset_info is None:
         return
         
@@ -153,13 +161,13 @@ def send_asset_info(asset_info):
 
     message += f"""
 💵 총 자산: {asset_info['total_asset']:,.0f}원
-⚖️ 코인 투자한도: {asset_info['limit_amount']:,.0f}원
+⚖️ 코인 투자한도: {limit_amount:,.0f}원
 """
 
     send_slack_message(message)
 
 # 주기적 상태점검 보고서 발송
-def send_status_update():
+def send_status_update(limit_amount):
     # 자산 정보 조회
     asset_info = get_asset_info(upbit)
     if asset_info is None:
@@ -172,7 +180,7 @@ def send_status_update():
     ──────────────
     💰 보유 KRW: {asset_info['krw_balance']:,.0f}원
     💵 총 자산: {asset_info['total_asset']:,.0f}원
-    ⚖️ 코인당 투자한도: {asset_info['limit_amount']:,.0f}원
+    ⚖️ 코인당 투자한도: {limit_amount:,.0f}원
     ──────────────
     """
     
@@ -205,18 +213,20 @@ def main():
     # 초기 자산의 BTC 보유 여부를 기준으로 매도 조건 설정
     initial_btc_balance = initial_asset_info['coin_info'].get('BTC', {}).get('balance', 0)
     has_initial_btc = initial_btc_balance > 0
+    limit_amount = get_limit_amount(upbit)
 
     while True:
         try:
             # 매 시간 경과 보고 전송
             sendStatusTime -= 1
             if sendStatusTime == 0:
-                send_status_update()
+                send_status_update(limit_amount)
                 sendStatusTime = 180
 
             # 현재 구매한 자산이 없을때 자산 데이터 조회 후 구매한도 재설정
             if len(rsi_check) == 0:
                 asset_info = get_asset_info(upbit)
+                limit_amount = get_limit_amount(upbit)
                 if asset_info is None:
                     send_slack_message("자산 정보 조회 실패, 10초 대기 후 다시 시도합니다...")
                     time.sleep(10)
@@ -235,7 +245,6 @@ def main():
             buy_signal = (rsi <= 35)
             sell_signal = (rsi >= 65 and 
                           current_price > float(asset_info['coin_info'][currency]['avg_price'])*1.01)
-            limit_amount = asset_info['limit_amount']
 
             # 초기 자산 정리
             if has_initial_btc and rsi >= 70:
