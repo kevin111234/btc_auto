@@ -226,7 +226,7 @@ def main():
             # 현재 구매한 자산이 없을때 자산 데이터 조회 후 구매한도 재설정
             if len(rsi_check) == 0:
                 limit_amount = get_limit_amount(upbit)
-                asset_info = send_asset_info(initial_asset_info, limit_amount)
+                asset_info = get_asset_info(upbit)
                 if asset_info is None:
                     send_slack_message("자산 정보 조회 실패, 10초 대기 후 다시 시도합니다...")
                     time.sleep(10)
