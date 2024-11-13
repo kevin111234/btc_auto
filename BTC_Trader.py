@@ -118,13 +118,13 @@ def get_asset_info(upbit):
                 'profit_rate': profit_rate
             }
 
-        limit_amount_per_coin = total_asset
+        limit_amount = krw_balance
         
         return {
             'krw_balance': krw_balance,
             'coin_info': coin_info,
             'total_asset': total_asset,
-            'limit_amount_per_coin': limit_amount_per_coin
+            'limit_amount': limit_amount
         }
 
     except Exception as e:
@@ -153,7 +153,7 @@ def send_asset_info(asset_info):
 
     message += f"""
 💵 총 자산: {asset_info['total_asset']:,.0f}원
-⚖️ 코인당 투자한도: {asset_info['limit_amount_per_coin']:,.0f}원
+⚖️ 코인 투자한도: {asset_info['limit_amount']:,.0f}원
 """
 
     send_slack_message(message)
@@ -172,7 +172,7 @@ def send_status_update():
     ──────────────
     💰 보유 KRW: {asset_info['krw_balance']:,.0f}원
     💵 총 자산: {asset_info['total_asset']:,.0f}원
-    ⚖️ 코인당 투자한도: {asset_info['limit_amount_per_coin']:,.0f}원
+    ⚖️ 코인당 투자한도: {asset_info['limit_amount']:,.0f}원
     ──────────────
     """
     
@@ -226,7 +226,7 @@ def main():
             buy_signal = (rsi <= 35)
             sell_signal = (rsi >= 65 and 
                           current_price > float(asset_info['coin_info'][currency]['avg_price'])*1.01)
-            limit_amount = asset_info['limit_amount_per_coin']
+            limit_amount = asset_info['limit_amount']
             # 매수 진행
             if buy_signal:
                 if new_rsi not in rsi_check:
