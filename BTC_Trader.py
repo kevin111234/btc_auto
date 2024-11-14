@@ -310,7 +310,7 @@ def main():
                         print(position_tracker)
                         print(rsi_check)
             else:
-                print("매수/매도 신호가 없습니다. 기회 탐색중...")
+                print(f"매수/매도 신호가 없습니다. 기회 탐색중... rsi: {rsi}")
 
             # 10초간 대기
             time.sleep(10)
