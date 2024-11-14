@@ -247,7 +247,7 @@ def main():
                           current_price > asset_info['coin_info'][currency]['avg_price']*1.01)
 
             # 초기 자산 정리
-            if has_initial_btc and rsi >= 70 and current_price > asset_info['coin_info'][currency]['avg_price']*1.01 :
+            if has_initial_btc and rsi >= 70 and current_price > initial_asset_info['coin_info'][currency]['avg_price']*1.01 :
                 order = upbit.sell_market_order(COIN_TICKER, initial_btc_balance)
                 message = f"매도 주문 완료. 현재가격: {current_price}"
                 print(message)
