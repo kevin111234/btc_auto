@@ -77,11 +77,11 @@ def get_rsi(rsi):
 
 def get_position_size(rsi):
     if rsi == 20:
-        return 0.4
-    elif rsi == 25:
-        return 0.3
-    elif rsi == 30:
         return 0.2
+    elif rsi == 25:
+        return 0.4
+    elif rsi == 30:
+        return 0.3
     elif rsi == 35:
         return 0.1
     return 0
