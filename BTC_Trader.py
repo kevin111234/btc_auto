@@ -222,11 +222,11 @@ def main():
             if sendStatusTime == 0:
                 send_status_update(limit_amount)
                 sendStatusTime = 180
+            asset_info = get_asset_info(upbit)
 
             # 현재 구매한 자산이 없을때 자산 데이터 조회 후 구매한도 재설정
             if len(rsi_check) == 0:
                 limit_amount = get_limit_amount(upbit)
-                asset_info = get_asset_info(upbit)
                 if asset_info is None:
                     send_slack_message("자산 정보 조회 실패, 10초 대기 후 다시 시도합니다...")
                     time.sleep(10)
@@ -244,10 +244,12 @@ def main():
             # 매매 신호 판단
             buy_signal = (rsi <= 35)
             sell_signal = (rsi >= 65 and 
-                          current_price > asset_info['coin_info'][currency]['avg_price']*1.01)
+                          asset_info['coin_info'][currency]['profit_rate'] >= 1)
 
             # 초기 자산 정리
-            if has_initial_btc and rsi >= 70 and current_price > initial_asset_info['coin_info'][currency]['avg_price']*1.01 :
+            initial_avg_price = initial_asset_info['coin_info'][currency]['avg_price']
+            initial_profit_rate = ((current_price - initial_avg_price) / initial_avg_price * 100) if initial_avg_price > 0 else 0
+            if has_initial_btc and rsi >= 70 and initial_profit_rate >= 1 :
                 order = upbit.sell_market_order(COIN_TICKER, initial_btc_balance)
                 message = f"매도 주문 완료. 현재가격: {current_price}"
                 print(message)
