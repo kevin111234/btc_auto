@@ -176,24 +176,24 @@ def send_status_update(limit_amount):
 
     # 상태 메시지 작성
     message = f"""
-    📈 상태 점검 보고서
-    ──────────────
-    💰 보유 KRW: {asset_info['krw_balance']:,.0f}원
-    💵 총 자산: {asset_info['total_asset']:,.0f}원
-    ⚖️ 코인당 투자한도: {limit_amount:,.0f}원
-    ──────────────
+📈 상태 점검 보고서
+──────────────
+💰 보유 KRW: {asset_info['krw_balance']:,.0f}원
+💵 총 자산: {asset_info['total_asset']:,.0f}원
+⚖️ 코인당 투자한도: {limit_amount:,.0f}원
+──────────────
     """
     
     # 각 코인 정보 추가
     for currency, info in asset_info['coin_info'].items():
         message += f"""
-        🪙 {currency}:
-        수량: {info['balance']:.8f}
-        평균매수가: {info['avg_price']:,.0f}원
-        현재가격: {info['current_price']:,.0f}원
-        평가금액: {info['value']:,.0f}원
-        수익률: {info['profit_rate']:.2f}%
-        ──────────────
+🪙 {currency}:
+수량: {info['balance']:.8f}
+평균매수가: {info['avg_price']:,.0f}원
+현재가격: {info['current_price']:,.0f}원
+평가금액: {info['value']:,.0f}원
+수익률: {info['profit_rate']:.2f}%
+──────────────
         """
 
     # Slack으로 메시지 전송
@@ -204,6 +204,8 @@ def main():
     rsi_check = []
     position_tracker = {}
     sendStatusTime = 180
+    previous_rsi = None
+
     print(f"{COIN_TICKER} 자동투자 프로그램을 시작합니다.")
     initial_asset_info = get_asset_info(upbit)
     limit_amount = get_limit_amount(upbit)
