@@ -246,12 +246,12 @@ def main():
             # 매매 신호 판단
             buy_signal = (rsi <= 35)
             sell_signal = (rsi >= 65 and 
-                          asset_info['coin_info'][currency]['profit_rate'] >= 1)
+                          asset_info['coin_info'][currency]['profit_rate'] >= 0.5)
 
             # 초기 자산 정리
             initial_avg_price = initial_asset_info['coin_info'][currency]['avg_price']
             initial_profit_rate = ((current_price - initial_avg_price) / initial_avg_price * 100) if initial_avg_price > 0 else 0
-            if has_initial_btc and rsi >= 70 and initial_profit_rate >= 1 :
+            if has_initial_btc and rsi >= 70 and initial_profit_rate >= 0.5 :
                 order = upbit.sell_market_order(COIN_TICKER, initial_btc_balance)
                 message = f"매도 주문 완료. 현재가격: {current_price}"
                 print(message)
