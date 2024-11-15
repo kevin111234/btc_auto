@@ -29,17 +29,31 @@ class API:
     def get_asset_info(self):
         try:
             balances = self.upbit.get_balances()
+            if not balances:
+                raise ValueError("잔액 정보를 가져올 수 없습니다")
+            
             krw_balance = float(next((balance['balance'] for balance in balances 
                                     if balance['currency'] == 'KRW'), 0))
+            
+            current_prices = {ticker: self.get_current_price(ticker) for ticker in self.config.coin_ticker}
+            
             coin_info = {}
             total_asset = krw_balance
+            
+            balance_dict = {b['currency']: b for b in balances}
+            
             for ticker in self.config.coin_ticker:
                 currency = ticker.split('-')[1]
-                current_price = self.get_current_price(ticker)
-                coin_balance = float(next((balance['balance'] for balance in balances 
-                                      if balance['currency'] == currency), 0))
-                avg_buy_price = float(next((balance['avg_buy_price'] for balance in balances 
-                                      if balance['currency'] == currency), 0))
+                current_price = current_prices[ticker]
+                
+                if current_price is None:
+                    self.send_slack_message(self.config.slack_channel_id, 
+                                        f"Warning: {ticker}의 현재가를 가져올 수 없습니다")
+                    continue
+                    
+                balance_info = balance_dict.get(currency, {})
+                coin_balance = float(balance_info.get('balance', 0))
+                avg_buy_price = float(balance_info.get('avg_buy_price', 0))
                 
                 coin_value = coin_balance * current_price
                 total_asset += coin_value
@@ -51,15 +65,20 @@ class API:
                     'avg_price': avg_buy_price,
                     'current_price': current_price,
                     'value': coin_value,
-                    'profit_rate': profit_rate
+                    'profit_rate': round(profit_rate, 2)
                 }
+            
             return {
                 'krw_balance': krw_balance,
                 'coin_info': coin_info,
                 'total_asset': total_asset
             }
+            
         except Exception as e:
-            print(f"Error getting asset info: {e}")
+            error_msg = f"자산 정보 조회 중 오류 발생: {str(e)}"
+            self.send_slack_message(self.config.slack_channel_id, error_msg)
+            print(error_msg)
+            return None
 
 if __name__ == "__main__":
     print("api 테스트")
