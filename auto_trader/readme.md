@@ -17,7 +17,7 @@
 
 ### 2.1 디렉토리 구조
 ```
-crypto_trader/
+auto_trader/
 ├── config.py           # 설정 및 상수값
 ├── api.py        # Upbit API 래퍼
 ├── indicator.py       # 기술적 지표 계산
