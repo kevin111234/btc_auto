@@ -12,11 +12,13 @@ class Indicator:
         gains = delta.clip(lower=0)
         losses = -delta.clip(upper=0)
 
-        n = 14
+        n = 14 # 기간 설정
 
+        # 첫 번째 평균값 계산 (SMA)
         avg_gain = gains[:n].mean()
         avg_loss = losses[:n].mean()
 
+        # 이후 평균값 계산 (와일더의 방법)
         avg_gain_list = [avg_gain]
         avg_loss_list = [avg_loss]
 
@@ -30,6 +32,7 @@ class Indicator:
             avg_gain_list.append(avg_gain)
             avg_loss_list.append(avg_loss)
 
+        # RS 및 RSI 계산
         rs = pd.Series(avg_gain_list, index=delta.index[n-1:]) / pd.Series(avg_loss_list, index=delta.index[n-1:])
         rsi = 100 - (100 / (1 + rs))
 
