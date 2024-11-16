@@ -60,8 +60,10 @@ class Notifier:
             self.api.send_slack_message(self.api.config.slack_error_channel, error_msg)
 
     def create_trade_report(self):
-        message = """
+        asset_info = self.api.get_asset_info()
+        limit_amounts = self.api.get_limit_amounts()
+        message = f"""
 📈 거래 보고
 ──────────────
-
+💵 전체 수익률: {((asset_info['total_asset'] - 200000) / 200000 * 100):.2f}%
 """
