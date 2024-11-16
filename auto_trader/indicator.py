@@ -75,3 +75,18 @@ class Indicator:
         
         return volume_profile
 
+    def get_new_rsi(self):
+        rsi = self.calculate_rsi()
+        # 50 이상 rsi 반전
+        if rsi >= 50:
+            rsi = 100 - rsi
+        if rsi <= 20:
+            return 20
+        elif rsi <= 25:
+            return 25
+        elif rsi <= 30:
+            return 30
+        elif rsi <= 35:
+            return 35
+        else:
+            return 50
