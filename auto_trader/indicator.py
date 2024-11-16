@@ -91,6 +91,37 @@ class Indicator:
         else:
             return 50
 
+    def get_volume_profile(self):
+        """
+        볼륨 프로파일을 기반으로 주요 가격 레벨을 반환
+        
+        Returns:
+        - poc: Point of Control (가장 거래량이 많은 가격대)
+        - support_levels: 주요 지지 레벨 리스트
+        - resistance_levels: 주요 저항 레벨 리스트
+        """
+        volume_profile = self.calculate_volume_profile()
+        
+        # POC (Point of Control) - 가장 거래량이 많은 가격대
+        poc = volume_profile['volume_ratio'].idxmax()
+        
+        # 현재가 기준으로 지지/저항 레벨 구분
+        current_price = self.current_price
+        
+        # 거래량 비율이 10% 이상인 주요 가격대 선별
+        significant_levels = volume_profile[volume_profile['volume_ratio'] >= 10].index
+        
+        support_levels = [level for level in significant_levels 
+                          if level.mid < current_price]
+        resistance_levels = [level for level in significant_levels 
+                            if level.mid > current_price]
+        
+        # 가격 순으로 정렬
+        support_levels.sort(key=lambda x: x.mid, reverse=True)
+        resistance_levels.sort(key=lambda x: x.mid)
+        
+        return poc, support_levels, resistance_levels
+
     def get_position_size(self):
         # 현재 rsi 값에 따라서만 포지션 사이즈 결정
         rsi = self.get_new_rsi()
