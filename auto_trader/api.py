@@ -140,6 +140,38 @@ class API:
             print(error_msg)
             return {}
 
+    def create_asset_report(self, asset_info, limit_amounts):
+        message = """
+📊 자산 현황 보고
+──────────────
+💰 보유 KRW: {asset_info['krw_balance']:,.0f}원
+──────────────"""
+
+        for currency, info in asset_info['coin_info'].items():
+            message += f"""
+🪙 {currency}:
+수량: {info['balance']:.8f}
+평균매수가: {info['avg_price']:,.0f}원
+현재가격: {info['current_price']:,.0f}원
+평가금액: {info['value']:,.0f}원
+수익률: {info['profit_rate']:.2f}%
+코인별 투자한도: {limit_amounts[currency]:,.0f}원
+──────────────
+"""
+        message += f"""
+💵 총 자산: {asset_info['total_asset']:,.0f}원
+💵 전체 수익률: {((asset_info['total_asset'] - 200000) / 200000 * 100):.2f}%
+──────────────
+"""
+        return message
+    
+    def report_asset_info(self):
+        asset_info = self.get_asset_info()
+        limit_amounts = self.get_limit_amount()
+        if asset_info and limit_amounts:
+            message = self.create_asset_report(asset_info, limit_amounts)
+            self.send_slack_message(self.config.slack_asset_channel, message)
+
 if __name__ == "__main__":
     print("api 테스트")
     api = API()
