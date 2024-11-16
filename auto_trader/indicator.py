@@ -35,3 +35,40 @@ class Indicator:
 
         return rsi.iloc[-1]
 
+    def calculate_volume_profile(self, num_bins=12, time_period=100):
+        """
+        볼륨 프로파일을 계산하는 함수
+        
+        Parameters:
+        - num_bins: 가격 구간의 개수 (기본값: 12)
+        - time_period: 분석할 기간 (기본값: 100)
+        
+        Returns:
+        - price_levels: 가격 구간별 거래량 정보를 담은 DataFrame
+        """
+        df = self.ohlcv.tail(time_period)
+        
+        # 가격 범위 설정
+        price_high = df['high'].max()
+        price_low = df['low'].min()
+        price_bins = pd.interval_range(start=price_low, end=price_high, periods=num_bins)
+        
+        # 각 봉의 거래량을 가격 구간에 분배
+        volume_profile = pd.DataFrame(columns=['volume'])
+        
+        for idx, row in df.iterrows():
+            # 각 봉에서 거래된 구간 찾기
+            candle_bins = [bin for bin in price_bins if (row['low'] <= bin.right and row['high'] >= bin.left)]
+            # 거래량을 구간별로 균등 분배
+            volume_per_bin = row['volume'] / len(candle_bins)
+            
+            for price_bin in candle_bins:
+                if price_bin not in volume_profile.index:
+                    volume_profile.loc[price_bin] = 0
+                volume_profile.loc[price_bin, 'volume'] += volume_per_bin
+        
+        # 가격 구간별 거래량 비율 계산
+        volume_profile['volume_ratio'] = volume_profile['volume'] / volume_profile['volume'].sum() * 100
+        
+        return volume_profile
+
