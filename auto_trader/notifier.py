@@ -58,3 +58,10 @@ class Notifier:
         except Exception as e:
             error_msg = f"자산 보고 중 오류 발생: {str(e)}"
             self.api.send_slack_message(self.api.config.slack_error_channel, error_msg)
+
+    def create_trade_report(self):
+        message = """
+📈 거래 보고
+──────────────
+
+"""
