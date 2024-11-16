@@ -90,3 +90,17 @@ class Indicator:
             return 35
         else:
             return 50
+
+    def get_position_size(self):
+        # 현재 rsi 값에 따라서만 포지션 사이즈 결정
+        rsi = self.get_new_rsi()
+        if rsi == 20:
+            return 0.2 # 20%
+        elif rsi == 25:
+            return 0.4 # 40%
+        elif rsi == 30:
+            return 0.3 # 30%
+        elif rsi == 35:
+            return 0.1 # 10%
+        else:
+            return 0
