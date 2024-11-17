@@ -58,7 +58,7 @@ def calculate_indicators(df):
     rs = pd.Series(avg_gain_list, index=delta.index[n-1:]) / pd.Series(avg_loss_list, index=delta.index[n-1:])
     rsi = 100 - (100 / (1 + rs))
 
-    return rsi.iloc[-1]
+    return rsi.iloc[-1], rs.iloc[-2]
 
 def get_rsi(rsi):
     # 50 이상 rsi 반전
@@ -256,7 +256,7 @@ def main():
 
             # 현재 가격 조회
             currency = COIN_TICKER.split('-')[1]
-            rsi = calculate_indicators(df)
+            rsi, previous_rsi = calculate_indicators(df)
             current_price = pyupbit.get_current_price(COIN_TICKER)
             new_rsi = get_rsi(rsi)
 
@@ -344,7 +344,6 @@ RSI: {rsi:.2f}
                 print(f"매수/매도 신호가 없습니다. 기회 탐색중... rsi: {rsi}")
 
             # 10초간 대기
-            previous_rsi = rsi
             time.sleep(5)
 
 
