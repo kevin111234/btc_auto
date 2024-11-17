@@ -1,12 +1,11 @@
-import api
+import api, config
 
 class Notifier:
     def __init__(self):
         self.api = api.API()
+        self.config = config.Config()
 
-    def create_asset_report(self):
-        asset_info = self.api.get_asset_info()
-        limit_amounts = self.api.get_limit_amounts()
+    def create_asset_report(self, asset_info, limit_amounts):
         """
         자산 현황 보고서를 생성하는 메서드
         
