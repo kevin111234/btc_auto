@@ -261,8 +261,8 @@ def main():
             new_rsi = get_rsi(rsi)
 
             # 매매 신호 판단
-            buy_signal = (rsi <= 35)
-            sell_signal = (rsi >= 65 and 
+            buy_signal = (rsi <= 35 and previous_rsi <= rsi)
+            sell_signal = (rsi >= 65 and previous_rsi >= rsi and
                           asset_info['coin_info'][currency]['profit_rate'] >= 0.5)
 
             # 초기 자산 정리
