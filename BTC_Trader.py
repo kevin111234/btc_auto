@@ -5,6 +5,7 @@ from slack_sdk import WebClient
 from slack_sdk.errors import SlackApiError
 import pandas as pd
 import time
+from datetime import datetime
 
 # 환경변수 설정
 load_dotenv()
@@ -208,11 +209,14 @@ def send_status_update(limit_amount,rsi_check, position_traker):
     # Slack으로 메시지 전송
     send_slack_message(message)
 
+def should_send_status():
+    """현재 시간이 정각이나 30분인지 확인"""
+    current_time = datetime.now()
+    return current_time.minute in [0, 30]
 
 def main():
     rsi_check = []
     position_tracker = {}
-    sendStatusTime = 180
     previous_rsi = None
 
     print(f"{COIN_TICKER} 자동투자 프로그램을 시작합니다.")
@@ -229,10 +233,14 @@ def main():
     while True:
         try:
             # 매 시간 경과 보고 전송
-            sendStatusTime -= 1
-            if sendStatusTime == 0:
-                send_status_update(limit_amount,rsi_check, position_tracker)
-                sendStatusTime = 180
+            current_time = datetime.now()
+            if should_send_status():
+                if not status_sent:
+                    send_status_update(limit_amount,rsi_check, position_tracker)
+                    status_sent = True
+            else:
+                status_sent = False
+
             asset_info = get_asset_info(upbit)
 
             # 현재 구매한 자산이 없을때 자산 데이터 조회 후 구매한도 재설정
