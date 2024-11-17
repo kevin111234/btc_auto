@@ -162,12 +162,13 @@ def send_asset_info(asset_info, limit_amount):
     message += f"""
 💵 총 자산: {asset_info['total_asset']:,.0f}원
 ⚖️ 코인 투자한도: {limit_amount:,.0f}원
+💵 전체 수익률: {((asset_info['total_asset'] - 200000) / 200000 * 100):.2f}%
 """
 
     send_slack_message(message)
 
 # 주기적 상태점검 보고서 발송
-def send_status_update(limit_amount):
+def send_status_update(limit_amount,rsi_check, position_traker):
     # 자산 정보 조회
     asset_info = get_asset_info(upbit)
     if asset_info is None:
@@ -182,6 +183,9 @@ def send_status_update(limit_amount):
 💵 총 자산: {asset_info['total_asset']:,.0f}원
 ⚖️ 코인당 투자한도: {limit_amount:,.0f}원
 ──────────────
+{position_traker}
+{rsi_check}
+──────────────
     """
     
     # 각 코인 정보 추가
@@ -195,6 +199,11 @@ def send_status_update(limit_amount):
 수익률: {info['profit_rate']:.2f}%
 ──────────────
         """
+    message += f"""
+💵 총 자산: {asset_info['total_asset']:,.0f}원
+⚖️ 코인 투자한도: {limit_amount:,.0f}원
+💵 전체 수익률: {((asset_info['total_asset'] - 200000) / 200000 * 100):.2f}%
+"""
 
     # Slack으로 메시지 전송
     send_slack_message(message)
@@ -222,7 +231,7 @@ def main():
             # 매 시간 경과 보고 전송
             sendStatusTime -= 1
             if sendStatusTime == 0:
-                send_status_update(limit_amount)
+                send_status_update(limit_amount,rsi_check, position_tracker)
                 sendStatusTime = 180
             asset_info = get_asset_info(upbit)
 
@@ -274,7 +283,12 @@ def main():
                     send_slack_message(message)
                     time.sleep(10)
                     if order:
-                        message = f"[{COIN_TICKER}] 매수 주문 체결\n금액: {position_size:,.0f}원\nRSI: {rsi:.2f}"
+                        message = f"""
+[{COIN_TICKER}] 매수 주문 체결
+금액: {position_size:,.0f}원
+RSI: {rsi:.2f}
+{rsi_check}
+"""
                         send_slack_message(message)
                         asset_info = get_asset_info(upbit)
                         send_asset_info(asset_info, limit_amount)
@@ -302,7 +316,12 @@ def main():
                     send_slack_message(message)
                     time.sleep(10)
                     if order:
-                        message = f"[{COIN_TICKER}] 매도 주문 체결\n수량: {sell_amount:.8f}\nRSI: {rsi:.2f}"
+                        message = f"""
+[{COIN_TICKER}] 매도 주문 체결
+수량: {sell_amount:.8f}
+RSI: {rsi:.2f}
+{rsi_check}
+"""
                         send_slack_message(message)
                         asset_info = get_asset_info(upbit)
                         send_asset_info(asset_info, limit_amount)
