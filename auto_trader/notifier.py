@@ -52,17 +52,51 @@ class Notifier:
                 raise ValueError("자산 정보 또는 투자한도 조회 실패")
                 
             message = self.create_asset_report(asset_info, limit_amounts)
-            self.api.send_slack_message(self.api.config.slack_asset_channel, message)
+            self.api.send_slack_message(self.config.slack_asset_channel, message)
             
         except Exception as e:
             error_msg = f"자산 보고 중 오류 발생: {str(e)}"
-            self.api.send_slack_message(self.api.config.slack_error_channel, error_msg)
+            self.api.send_slack_message(self.config.slack_error_channel, error_msg)
 
-    def create_trade_report(self):
+    def create_trade_report(self, coin_ticker, executed_price, executed_volume, rsi):
+        """
+        거래 보고서를 생성하는 메서드
+        
+        Args:
+            coin_ticker (str): 코인 티커
+            executed_price (float): 체결 가격
+            executed_volume (float): 체결 수량
+            rsi (float): RSI 지표값
+            
+        Returns:
+            str: 포맷팅된 거래 보고서 메시지
+        """
         asset_info = self.api.get_asset_info()
-        limit_amounts = self.api.get_limit_amounts()
         message = f"""
-📈 거래 보고
+📈 [{coin_ticker}] 거래 보고
+──────────────
+진입가격: {executed_price:,.0f}원
+진입수량: {executed_volume:.8f}
+거래가격: {executed_price * executed_volume:,.0f}원
+RSI: {rsi:.2f}
 ──────────────
 💵 전체 수익률: {((asset_info['total_asset'] - 200000) / 200000 * 100):.2f}%
 """
+        return message
+    
+    def report_trade_info(self, coin_ticker, executed_price, executed_volume, rsi):
+        """
+        거래 정보를 슬랙으로 보고하는 메서드
+        
+        Args:
+            coin_ticker (str): 코인 티커
+            executed_price (float): 체결 가격
+            executed_volume (float): 체결 수량
+            rsi (float): RSI 지표값
+        """
+        try:
+            message = self.create_trade_report(coin_ticker, executed_price, executed_volume, rsi)
+            self.api.send_slack_message(self.config.slack_trade_channel, message)
+        except Exception as e:
+            error_msg = f"거래 보고 중 오류 발생: {str(e)}"
+            self.api.send_slack_message(self.config.slack_error_channel, error_msg)
