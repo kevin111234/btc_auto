@@ -5,6 +5,50 @@ class Notifier:
         self.api = api.API()
         self.config = config.Config()
 
+    def create_error_report(self, error_type, error_message, additional_info=None):
+        """
+        에러 보고서를 생성하는 메서드
+        
+        Args:
+            error_type (str): 에러 유형
+            error_message (str): 에러 메시지
+            additional_info (dict, optional): 추가 정보
+            
+        Returns:
+            str: 포맷팅된 에러 보고서 메시지
+        """
+        message = f"""
+⚠️ 에러 발생
+──────────────
+🔴 에러 유형: {error_type}
+🔴 에러 내용: {error_message}
+──────────────"""
+
+        if additional_info:
+            message += "\n📌 추가 정보:"
+            for key, value in additional_info.items():
+                message += f"\n• {key}: {value}"
+            message += "\n──────────────"
+
+        return message
+
+    def report_error(self, error_type, error_message, additional_info=None):
+        """
+        에러 정보를 슬랙으로 보고하는 메서드
+        
+        Args:
+            error_type (str): 에러 유형
+            error_message (str): 에러 메시지
+            additional_info (dict, optional): 추가 정보
+        """
+        try:
+            message = self.create_error_report(error_type, error_message, additional_info)
+            self.api.send_slack_message(self.config.slack_error_channel, message)
+        except Exception as e:
+            # 에러 보고 자체가 실패한 경우의 최소한의 에러 메시지
+            fallback_message = f"❌ 치명적 오류: 에러 보고 실패\n{str(e)}"
+            self.api.send_slack_message(self.config.slack_error_channel, fallback_message)
+
     def create_asset_report(self, asset_info, limit_amounts):
         """
         자산 현황 보고서를 생성하는 메서드
@@ -39,7 +83,7 @@ class Notifier:
 ──────────────
 """
         return message
-    
+
     def report_asset_info(self):
         """
         자산 정보를 조회하고 슬랙으로 보고하는 메서드
@@ -55,8 +99,11 @@ class Notifier:
             self.api.send_slack_message(self.config.slack_asset_channel, message)
             
         except Exception as e:
-            error_msg = f"자산 보고 중 오류 발생: {str(e)}"
-            self.api.send_slack_message(self.config.slack_error_channel, error_msg)
+            self.report_error(
+                "자산 보고 오류",
+                str(e),
+                {"시간": self.api.get_current_time()}
+            )
 
     def create_trade_report(self, coin_ticker, executed_price, executed_volume, rsi):
         """
@@ -98,5 +145,13 @@ RSI: {rsi:.2f}
             message = self.create_trade_report(coin_ticker, executed_price, executed_volume, rsi)
             self.api.send_slack_message(self.config.slack_trade_channel, message)
         except Exception as e:
-            error_msg = f"거래 보고 중 오류 발생: {str(e)}"
-            self.api.send_slack_message(self.config.slack_error_channel, error_msg)
+            self.report_error(
+                "거래 보고 오류",
+                str(e),
+                {
+                    "코인": coin_ticker,
+                    "가격": executed_price,
+                    "수량": executed_volume,
+                    "RSI": rsi
+                }
+            )
