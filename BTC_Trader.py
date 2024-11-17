@@ -284,7 +284,7 @@ def main():
                     time.sleep(10)
                     if order:
                         # 정밀도를 8자리로 고정하여 저장
-                        buy_amount = round(float(order['executed_volume']), 8)
+                        buy_amount = round(position_size / current_price, 8)
                         position_tracker[new_rsi] = buy_amount
                         message = f"""
 [{COIN_TICKER}] 매수 주문 체결
