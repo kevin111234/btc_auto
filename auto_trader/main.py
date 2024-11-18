@@ -17,7 +17,6 @@ def main():
     config = Config()
     api = API()
     notifier = Notifier()
-    indicator = Indicator()
     limit_amounts_per_coin = {}
     trade_check_per_coin = {}
 
@@ -55,6 +54,7 @@ def main():
 
             for currency in config.coin_ticker:
                 current_price = api.get_current_price(currency)
+                indicator = Indicator(currency)
                 trader = Trader(currency)
                 buy_signal, sell_signal, new_rsi, rsi = trader.signal_check(current_asset_info)
                 # 초기 자산 정리
