@@ -7,8 +7,8 @@ class Indicator:
         self.ohlcv = self.api.get_ohlcv(ticker, 'minute5', 100)
         self.current_price = self.api.get_current_price(ticker)
 
-    def calculate_rsi(self):
-        delta = self.ohlcv['close'].diff()
+    def calculate_rsi(self, data):
+        delta = data['close'].diff()
         gains = delta.clip(lower=0)
         losses = -delta.clip(upper=0)
 
@@ -75,8 +75,8 @@ class Indicator:
         
         return volume_profile
 
-    def get_new_rsi(self):
-        rsi = self.calculate_rsi()
+    def get_new_rsi(self, data):
+        rsi = self.calculate_rsi(data)
         # 50 이상 rsi 반전
         if rsi >= 50:
             rsi = 100 - rsi
