@@ -155,3 +155,35 @@ RSI: {rsi:.2f}
                     "RSI": rsi
                 }
             )
+
+    def create_initial_asset_report(self, asset_info, limit_amounts):
+        message = f"""
+📊 초기 자산 보고
+──────────────
+💰 보유 KRW: {asset_info['krw_balance']:,.0f}원
+──────────────
+"""
+        for currency, info in asset_info['coin_info'].items():
+            message += f"""
+🪙 {currency}:
+수량: {info['balance']:.8f}
+평균매수가: {info['avg_price']:,.0f}원
+현재가격: {info['current_price']:,.0f}원
+평가금액: {info['value']:,.0f}원
+수익률: {info['profit_rate']:.2f}%
+코인별 투자한도: {limit_amounts.get(f'KRW-{currency}', 0):,.0f}원
+──────────────
+"""
+        message += f"""
+💵 총 자산: {asset_info['total_asset']:,.0f}원
+각 코인별 투자한도: {limit_amounts}
+──────────────
+"""
+        return message
+
+    def report_initial_asset_info(self, asset_info, limit_amounts):
+        try:
+            message = self.create_initial_asset_report(asset_info, limit_amounts)
+            self.api.send_slack_message(self.config.slack_asset_channel, message)
+        except Exception as e:
+            self.report_error("초기 자산 보고 오류", str(e))
