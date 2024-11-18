@@ -84,17 +84,11 @@ class Notifier:
 """
         return message
 
-    def report_asset_info(self):
+    def report_asset_info(self, asset_info, limit_amounts):
         """
         자산 정보를 조회하고 슬랙으로 보고하는 메서드
         """
-        try:
-            asset_info = self.api.get_asset_info()
-            limit_amounts = self.api.get_limit_amounts()
-            
-            if not asset_info or not limit_amounts:
-                raise ValueError("자산 정보 또는 투자한도 조회 실패")
-                
+        try:               
             message = self.create_asset_report(asset_info, limit_amounts)
             self.api.send_slack_message(self.config.slack_asset_channel, message)
             
