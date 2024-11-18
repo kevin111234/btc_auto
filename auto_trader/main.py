@@ -115,12 +115,12 @@ def main():
                     {
                         "프로세스 정보": {
                     "에러 타입": type(e).__name__,
-                    "상세 에러 메시지": str(e),
-                    "에러 발생 위치": "main",
-                    "Config 상태": {
-                            "코인 티커 목록": Config().coin_ticker,
-                            "API 설정 상태": "설정됨" if Config().upbit_access_key else "미설정"
-                        }
+                            "상세 에러 메시지": str(e),
+                            "에러 발생 위치": "main loop",
+                            "Config 상태": {
+                                "코인 티커 목록": Config().coin_ticker,
+                                "API 설정 상태": "설정됨" if Config().upbit_access_key else "미설정"
+                            }
                     },
                     "시스템 상태": {
                         "자산 정보 조회": "성공" if current_asset_info else "실패",
