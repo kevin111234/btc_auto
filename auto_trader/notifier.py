@@ -1,9 +1,10 @@
-import api, config
+from api import API
+from config import Config
 
 class Notifier:
     def __init__(self):
-        self.api = api.API()
-        self.config = config.Config()
+        self.api = API()
+        self.config = Config()
 
     def create_error_report(self, error_type, error_message, additional_info=None):
         """

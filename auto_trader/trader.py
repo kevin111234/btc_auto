@@ -1,13 +1,13 @@
-import api
-import notifier
-import indicator
+from api import API
+from notifier import Notifier
+from indicator import Indicator
 
 class Trader:
     def __init__(self, currency):
         self.currency = currency
-        self.api = api.API()
-        self.notifier = notifier.Notifier()
-        self.indicator = indicator.Indicator(currency)
+        self.api = API()
+        self.notifier = Notifier()
+        self.indicator = Indicator(currency)
 
     def signal_check(self, asset_info):
         data = self.api.get_ohlcv(self.currency, interval='minute5')

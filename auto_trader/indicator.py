@@ -1,9 +1,9 @@
-import api
+from api import API
 import pandas as pd
 
 class Indicator:
     def __init__(self, ticker):
-        self.api = api.Api()
+        self.api = API()
         self.ohlcv = self.api.get_ohlcv(ticker, 'minute5', 100)
         self.current_price = self.api.get_current_price(ticker)
 
