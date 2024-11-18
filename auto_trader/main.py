@@ -6,7 +6,14 @@ from trader import Trader
 import time
 from datetime import datetime
 
+SLEEP_TIME = 5
+EVENT_SLEEP_TIME = 10
+STATUS_REPORT_MINUTES = [0, 30]
+INITIAL_PROFIT_RATE_THRESHOLD = 0.5
+RSI_SELL_THRESHOLD = 70
+
 def main():
+    print("프로그램 시작")
     config = Config()
     api = API()
     notifier = Notifier()
@@ -22,12 +29,15 @@ def main():
     for currency in config.coin_ticker:
         limit_amounts_per_coin[currency] = initial_limit_amounts[currency]
         trade_check_per_coin[currency] = {}
+    notifier.report_initial_asset_info(initial_asset_info, initial_limit_amounts)
+
+    status_sent = False
 
     while True:
         try:
             current_asset_info = api.get_asset_info()
             current_time = datetime.now()
-            if current_time.minute in [0, 30]:
+            if current_time.minute in STATUS_REPORT_MINUTES:
                 if not status_sent:
                     notifier.report_asset_info(current_asset_info, limit_amounts_per_coin)
                     status_sent = True
@@ -40,7 +50,7 @@ def main():
                 limit_amounts_per_coin = api.get_limit_amount()
                 if current_asset_info is None:
                     notifier.report_error("main", "자산 정보 조회 실패, 10초 대기 후 다시 시도합니다...")
-                    time.sleep(10)
+                    time.sleep(EVENT_SLEEP_TIME)
                     continue
 
             for currency in config.coin_ticker:
@@ -51,10 +61,10 @@ def main():
                 initial_avg_price = initial_asset_info['coin_info'][currency]['avg_price']
                 initial_profit_rate = ((current_price - initial_avg_price) / initial_avg_price * 100) if initial_avg_price > 0 else 0
                 initial_balance = initial_asset_info['coin_info'][currency]['balance']
-                if initial_balance > 0 and rsi >= 70 and initial_profit_rate >= 0.5 :
+                if initial_balance > 0 and rsi >= RSI_SELL_THRESHOLD and initial_profit_rate >= INITIAL_PROFIT_RATE_THRESHOLD :
                     api.send_slack_message(f"{currency} 초기 자산 정리, 매도 주문 중...{rsi}", config.slack_trade_channel)
                     order = api.upbit.sell_market_order(currency, initial_balance)
-                    time.sleep(10)
+                    time.sleep(EVENT_SLEEP_TIME)
                     if order:
                         executed_order = api.upbit.get_order(order['uuid'])
                         executed_price = float(executed_order['trades'][0]['price'])
@@ -69,7 +79,7 @@ def main():
                     position_size = indicator.get_position_size(new_rsi)
                     if position_size > 0 and current_asset_info['krw_balance'] >= position_size:
                         order = api.upbit.buy_market_order(currency, position_size)
-                        time.sleep(10)
+                        time.sleep(EVENT_SLEEP_TIME)
                         if order:
                             executed_order = api.upbit.get_order(order['uuid'])
                             executed_price = float(executed_order['trades'][0]['price'])
@@ -82,7 +92,7 @@ def main():
                 elif sell_signal and new_rsi in trade_check_per_coin[currency]:
                     api.send_slack_message(f"{currency} 매도 신호 발생, 매도 주문 중...{rsi}", config.slack_trade_channel)
                     order = api.upbit.sell_market_order(currency, trade_check_per_coin[currency][new_rsi])
-                    time.sleep(10)
+                    time.sleep(EVENT_SLEEP_TIME)
                     if order:
                         executed_order = api.upbit.get_order(order['uuid'])
                         executed_price = float(executed_order['trades'][0]['price'])
@@ -96,10 +106,10 @@ def main():
                     print(f"{currency}에 대한 매매 신호가 없습니다. rsi: {rsi}")
             
             # 5초 대기
-            time.sleep(5)
+            time.sleep(SLEEP_TIME)
         except Exception as e:
             notifier.report_error("main", str(e))
-            time.sleep(10)
+            time.sleep(EVENT_SLEEP_TIME)
 
 
 
