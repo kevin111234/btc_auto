@@ -62,6 +62,7 @@ def main():
                         current_asset_info = api.get_asset_info()
                         notifier.report_asset_info(current_asset_info, limit_amounts_per_coin)
 
+                # 매수 신호 판단
                 if buy_signal and new_rsi not in trade_check_per_coin[currency]:
                     position_size = indicator.get_position_size(new_rsi)
                     if position_size > 0 and current_asset_info['krw_balance'] >= position_size:
@@ -75,6 +76,7 @@ def main():
                             notifier.report_trade_info(currency, executed_price, buy_amount, rsi)
                             trade_check_per_coin[currency][new_rsi] = buy_amount
 
+                # 매도 신호 판단
                 elif sell_signal and new_rsi in trade_check_per_coin[currency]:
                     order = api.upbit.sell_market_order(currency, trade_check_per_coin[currency][new_rsi])
                     time.sleep(10)
@@ -86,10 +88,12 @@ def main():
                         current_asset_info = api.get_asset_info()
                         notifier.report_asset_info(current_asset_info, limit_amounts_per_coin)
 
+                # 매매 신호 없음
                 else:
                     print(f"{currency}에 대한 매매 신호가 없습니다. rsi: {rsi}")
-                
-            time.sleep(10)
+            
+            # 5초 대기
+            time.sleep(5)
         except Exception as e:
             notifier.report_error("main", str(e))
 
