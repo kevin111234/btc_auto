@@ -52,6 +52,7 @@ def main():
                 initial_profit_rate = ((current_price - initial_avg_price) / initial_avg_price * 100) if initial_avg_price > 0 else 0
                 initial_balance = initial_asset_info['coin_info'][currency]['balance']
                 if initial_balance > 0 and rsi >= 70 and initial_profit_rate >= 0.5 :
+                    api.send_slack_message(f"{currency} 초기 자산 정리, 매도 주문 중...{rsi}", config.slack_trade_channel)
                     order = api.upbit.sell_market_order(currency, initial_balance)
                     time.sleep(10)
                     if order:
@@ -64,6 +65,7 @@ def main():
 
                 # 매수 신호 판단
                 if buy_signal and new_rsi not in trade_check_per_coin[currency]:
+                    api.send_slack_message(f"{currency} 매수 신호 발생, 매수 주문 중...{rsi}", config.slack_trade_channel)
                     position_size = indicator.get_position_size(new_rsi)
                     if position_size > 0 and current_asset_info['krw_balance'] >= position_size:
                         order = api.upbit.buy_market_order(currency, position_size)
@@ -78,6 +80,7 @@ def main():
 
                 # 매도 신호 판단
                 elif sell_signal and new_rsi in trade_check_per_coin[currency]:
+                    api.send_slack_message(f"{currency} 매도 신호 발생, 매도 주문 중...{rsi}", config.slack_trade_channel)
                     order = api.upbit.sell_market_order(currency, trade_check_per_coin[currency][new_rsi])
                     time.sleep(10)
                     if order:
@@ -96,6 +99,7 @@ def main():
             time.sleep(5)
         except Exception as e:
             notifier.report_error("main", str(e))
+            time.sleep(10)
 
 
 
