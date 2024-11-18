@@ -47,7 +47,7 @@ class API:
                 current_price = current_prices[ticker]
                 
                 if current_price is None:
-                    self.send_slack_message(self.config.slack_channel_id, 
+                    self.send_slack_message(self.config.slack_error_channel, 
                                         f"Warning: {ticker}의 현재가를 가져올 수 없습니다")
                     continue
                     
@@ -76,7 +76,7 @@ class API:
             
         except Exception as e:
             error_msg = f"자산 정보 조회 중 오류 발생: {str(e)}"
-            self.send_slack_message(self.config.slack_channel_id, error_msg)
+            self.send_slack_message(self.config.slack_error_channel, error_msg)
             print(error_msg)
             return None
     def get_limit_amount(self):
