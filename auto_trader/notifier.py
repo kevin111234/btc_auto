@@ -9,46 +9,87 @@ class Notifier:
     def create_error_report(self, error_type, error_message, additional_info=None):
         """
         에러 보고서를 생성하는 메서드
-        
-        Args:
-            error_type (str): 에러 유형
-            error_message (str): 에러 메시지
-            additional_info (dict, optional): 추가 정보
-            
-        Returns:
-            str: 포맷팅된 에러 보고서 메시지
         """
-        message = f"""
+        try:
+            # 기본 에러 정보
+            message = f"""
 ⚠️ 에러 발생
 ──────────────
 🔴 에러 유형: {error_type}
 🔴 에러 내용: {error_message}
+🔴 발생 시간: {self.api.get_current_time()}
 ──────────────"""
 
-        if additional_info:
-            message += "\n📌 추가 정보:"
-            for key, value in additional_info.items():
-                message += f"\n• {key}: {value}"
-            message += "\n──────────────"
+            # 에러 상세 정보 추가
+            if isinstance(error_message, Exception):
+                message += f"\n🔍 에러 클래스: {error_message.__class__.__name__}"
+                message += f"\n🔍 에러 위치: {getattr(error_message, '__traceback__', '알 수 없음')}"
 
-        return message
+            # 추가 정보 처리
+            if additional_info:
+                message += "\n📌 추가 정보:"
+                for key, value in additional_info.items():
+                    # 값이 딕셔너리인 경우 더 자세히 표시
+                    if isinstance(value, dict):
+                        message += f"\n• {key}:"
+                        for sub_key, sub_value in value.items():
+                            message += f"\n  - {sub_key}: {sub_value}"
+                    else:
+                        message += f"\n• {key}: {value}"
+                message += "\n──────────────"
+
+            return message
+        except Exception as e:
+            # 에러 보고서 생성 자체에서 에러가 발생한 경우
+            return f"❌ 에러 보고서 생성 실패: {str(e)}\n원본 에러: {error_type} - {error_message}"
 
     def report_error(self, error_type, error_message, additional_info=None):
         """
         에러 정보를 슬랙으로 보고하는 메서드
-        
-        Args:
-            error_type (str): 에러 유형
-            error_message (str): 에러 메시지
-            additional_info (dict, optional): 추가 정보
         """
         try:
+            # 기본 추가 정보 설정
+            if additional_info is None:
+                additional_info = {}
+            
+            # 시스템 정보 추가
+            additional_info.update({
+                "시간": self.api.get_current_time(),
+                "에러 발생 위치": self._get_caller_info()
+            })
+
             message = self.create_error_report(error_type, error_message, additional_info)
             self.api.send_slack_message(self.config.slack_error_channel, message)
         except Exception as e:
-            # 에러 보고 자체가 실패한 경우의 최소한의 에러 메시지
-            fallback_message = f"❌ 치명적 오류: 에러 보고 실패\n{str(e)}"
-            self.api.send_slack_message(self.config.slack_error_channel, fallback_message)
+            # 최후의 수단으로 최소한의 에러 정보라도 전송
+            fallback_message = f"""
+❌ 치명적 오류: 에러 보고 실패
+──────────────
+원본 에러: {error_type}
+{error_message}
+──────────────
+에러 보고 실패 사유: {str(e)}
+"""
+            try:
+                self.api.send_slack_message(self.config.slack_error_channel, fallback_message)
+            except:
+                print("CRITICAL: 슬랙 메시지 전송 완전 실패")
+                print(fallback_message)
+
+    def _get_caller_info(self):
+        """
+        에러가 발생한 위치 정보를 추출하는 헬퍼 메서드
+        """
+        import inspect
+        stack = inspect.stack()
+        # 현재 함수와 호출자를 건너뛰고 실제 에러 발생 위치 확인
+        for frame in stack[2:]:
+            filename = frame.filename
+            lineno = frame.lineno
+            function = frame.function
+            if 'auto_trader' in filename:  # 프로젝트 관련 파일만 추적
+                return f"{filename}:{lineno} in {function}"
+        return "알 수 없음"
 
     def create_asset_report(self, asset_info, limit_amounts):
         """
@@ -147,7 +188,12 @@ RSI: {rsi:.2f}
                     "코인": coin_ticker,
                     "가격": executed_price,
                     "수량": executed_volume,
-                    "RSI": rsi
+                    "RSI": rsi,
+                    "상세 에러": {
+                        "에러 타입": type(e).__name__,
+                        "에러 메시지": str(e),
+                        "발생 위치": self._get_caller_info()
+                    }
                 }
             )
 
