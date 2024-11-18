@@ -5,6 +5,7 @@ from slack_sdk import WebClient
 from slack_sdk.errors import SlackApiError
 import pandas as pd
 import time
+from datetime import datetime
 
 # 환경변수 설정
 load_dotenv()
@@ -57,7 +58,7 @@ def calculate_indicators(df):
     rs = pd.Series(avg_gain_list, index=delta.index[n-1:]) / pd.Series(avg_loss_list, index=delta.index[n-1:])
     rsi = 100 - (100 / (1 + rs))
 
-    return rsi.iloc[-1]
+    return rsi.iloc[-1], rs.iloc[-2]
 
 def get_rsi(rsi):
     # 50 이상 rsi 반전
@@ -162,12 +163,13 @@ def send_asset_info(asset_info, limit_amount):
     message += f"""
 💵 총 자산: {asset_info['total_asset']:,.0f}원
 ⚖️ 코인 투자한도: {limit_amount:,.0f}원
+💵 전체 수익률: {((asset_info['total_asset'] - 200000) / 200000 * 100):.2f}%
 """
 
     send_slack_message(message)
 
 # 주기적 상태점검 보고서 발송
-def send_status_update(limit_amount):
+def send_status_update(limit_amount,rsi_check, position_traker):
     # 자산 정보 조회
     asset_info = get_asset_info(upbit)
     if asset_info is None:
@@ -182,6 +184,9 @@ def send_status_update(limit_amount):
 💵 총 자산: {asset_info['total_asset']:,.0f}원
 ⚖️ 코인당 투자한도: {limit_amount:,.0f}원
 ──────────────
+{position_traker}
+{rsi_check}
+──────────────
     """
     
     # 각 코인 정보 추가
@@ -195,15 +200,23 @@ def send_status_update(limit_amount):
 수익률: {info['profit_rate']:.2f}%
 ──────────────
         """
+    message += f"""
+💵 총 자산: {asset_info['total_asset']:,.0f}원
+⚖️ 코인 투자한도: {limit_amount:,.0f}원
+💵 전체 수익률: {((asset_info['total_asset'] - 200000) / 200000 * 100):.2f}%
+"""
 
     # Slack으로 메시지 전송
     send_slack_message(message)
 
+def should_send_status():
+    """현재 시간이 정각이나 30분인지 확인"""
+    current_time = datetime.now()
+    return current_time.minute in [0, 30]
 
 def main():
     rsi_check = []
     position_tracker = {}
-    sendStatusTime = 180
     previous_rsi = None
 
     print(f"{COIN_TICKER} 자동투자 프로그램을 시작합니다.")
@@ -220,10 +233,14 @@ def main():
     while True:
         try:
             # 매 시간 경과 보고 전송
-            sendStatusTime -= 1
-            if sendStatusTime == 0:
-                send_status_update(limit_amount)
-                sendStatusTime = 180
+            current_time = datetime.now()
+            if should_send_status():
+                if not status_sent:
+                    send_status_update(limit_amount,rsi_check, position_tracker)
+                    status_sent = True
+            else:
+                status_sent = False
+
             asset_info = get_asset_info(upbit)
 
             # 현재 구매한 자산이 없을때 자산 데이터 조회 후 구매한도 재설정
@@ -239,19 +256,19 @@ def main():
 
             # 현재 가격 조회
             currency = COIN_TICKER.split('-')[1]
-            rsi = calculate_indicators(df)
+            rsi, previous_rsi = calculate_indicators(df)
             current_price = pyupbit.get_current_price(COIN_TICKER)
             new_rsi = get_rsi(rsi)
 
             # 매매 신호 판단
-            buy_signal = (rsi <= 35)
-            sell_signal = (rsi >= 65 and 
-                          asset_info['coin_info'][currency]['profit_rate'] >= 1)
+            buy_signal = (rsi <= 35 and previous_rsi <= rsi)
+            sell_signal = (rsi >= 65 and previous_rsi >= rsi and
+                          asset_info['coin_info'][currency]['profit_rate'] >= 0.5)
 
             # 초기 자산 정리
             initial_avg_price = initial_asset_info['coin_info'][currency]['avg_price']
             initial_profit_rate = ((current_price - initial_avg_price) / initial_avg_price * 100) if initial_avg_price > 0 else 0
-            if has_initial_btc and rsi >= 70 and initial_profit_rate >= 1 :
+            if has_initial_btc and rsi >= 70 and initial_profit_rate >= 0.5 :
                 order = upbit.sell_market_order(COIN_TICKER, initial_btc_balance)
                 message = f"매도 주문 완료. 현재가격: {current_price}"
                 print(message)
@@ -274,18 +291,26 @@ def main():
                     send_slack_message(message)
                     time.sleep(10)
                     if order:
-                        message = f"[{COIN_TICKER}] 매수 주문 체결\n금액: {position_size:,.0f}원\nRSI: {rsi:.2f}"
-                        send_slack_message(message)
-                        asset_info = get_asset_info(upbit)
-                        send_asset_info(asset_info, limit_amount)
-
+                        # 실제 체결된 정보 가져오기
+                        executed_order = upbit.get_order(order['uuid'])
+                        executed_price = float(executed_order['trades'][0]['price'])
+                        
+                        buy_amount = round(position_size / executed_price, 8)
+                        
                         # rsi 매매여부 체크(매수 시 추가)
-                        buy_amount = float(order['executed_volume'])
                         position_tracker[new_rsi] = buy_amount
                         rsi_check.append(new_rsi)
 
-                        print(position_tracker)
-                        print(rsi_check)
+                        message = f"""
+[{COIN_TICKER}] 매수 주문 체결
+체결가격: {executed_price:,.0f}원
+체결수량: {buy_amount:.8f}
+RSI: {new_rsi:.2f}
+포지션 현황: {position_tracker}
+"""
+                        send_slack_message(message)
+                        asset_info = get_asset_info(upbit)
+                        send_asset_info(asset_info, limit_amount)
 
             # 매도 진행
             elif sell_signal and new_rsi in rsi_check:
@@ -302,22 +327,24 @@ def main():
                     send_slack_message(message)
                     time.sleep(10)
                     if order:
-                        message = f"[{COIN_TICKER}] 매도 주문 체결\n수량: {sell_amount:.8f}\nRSI: {rsi:.2f}"
-                        send_slack_message(message)
-                        asset_info = get_asset_info(upbit)
-                        send_asset_info(asset_info, limit_amount)
-
                         # rsi 매매여부 체크(매도 시 삭제)
                         del position_tracker[new_rsi]
                         rsi_check.remove(new_rsi)
 
-                        print(position_tracker)
-                        print(rsi_check)
+                        message = f"""
+[{COIN_TICKER}] 매도 주문 체결
+수량: {sell_amount:.8f}
+RSI: {rsi:.2f}
+{rsi_check}
+"""
+                        send_slack_message(message)
+                        asset_info = get_asset_info(upbit)
+                        send_asset_info(asset_info, limit_amount)
             else:
                 print(f"매수/매도 신호가 없습니다. 기회 탐색중... rsi: {rsi}")
 
             # 10초간 대기
-            time.sleep(10)
+            time.sleep(5)
 
 
         except Exception as e:
