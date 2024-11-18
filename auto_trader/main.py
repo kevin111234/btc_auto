@@ -6,7 +6,7 @@ from trader import Trader
 import time
 from datetime import datetime
 
-SLEEP_TIME = 5
+SLEEP_TIME = 10
 EVENT_SLEEP_TIME = 10
 STATUS_REPORT_MINUTES = [0, 30]
 INITIAL_PROFIT_RATE_THRESHOLD = 0.5
@@ -106,8 +106,9 @@ def main():
                 else:
                     print(f"{currency}에 대한 매매 신호가 없습니다. rsi: {rsi}")
             
-            # 5초 대기
+            # 대기
             time.sleep(SLEEP_TIME)
+
         except Exception as e:
             notifier.report_error(
                 "메인 루프 오류",
