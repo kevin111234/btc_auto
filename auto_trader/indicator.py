@@ -76,7 +76,7 @@ class Indicator:
         return volume_profile
 
     def get_new_rsi(self, data):
-        rsi = self.calculate_rsi(data)
+        rsi, previous_rsi = self.calculate_rsi(data)
         # 50 이상 rsi 반전
         if rsi >= 50:
             rsi = 100 - rsi
