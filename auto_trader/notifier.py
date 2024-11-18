@@ -1,5 +1,6 @@
 from api import API
 from config import Config
+from datetime import datetime
 
 class Notifier:
     def __init__(self):
@@ -48,13 +49,15 @@ class Notifier:
         에러 정보를 슬랙으로 보고하는 메서드
         """
         try:
+            current_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            
             # 기본 추가 정보 설정
             if additional_info is None:
                 additional_info = {}
             
             # 시스템 정보 추가
             additional_info.update({
-                "시간": self.api.get_current_time(),
+                "시간": current_time,
                 "에러 발생 위치": self._get_caller_info()
             })
 
@@ -62,11 +65,13 @@ class Notifier:
             self.api.send_slack_message(self.config.slack_error_channel, message)
         except Exception as e:
             # 최후의 수단으로 최소한의 에러 정보라도 전송
+            current_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
             fallback_message = f"""
 ❌ 치명적 오류: 에러 보고 실패
 ──────────────
+발생 시간: {current_time}
 원본 에러: {error_type}
-{error_message}
+에러 내용: {error_message}
 ──────────────
 에러 보고 실패 사유: {str(e)}
 """

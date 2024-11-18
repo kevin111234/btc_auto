@@ -140,6 +140,15 @@ class API:
             print(error_msg)
             return {}
 
+    def get_current_time(self):
+        """
+        현재 시간을 반환하는 메서드
+        Returns:
+            str: YYYY-MM-DD HH:MM:SS 형식의 현재 시간
+        """
+        from datetime import datetime
+        return datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+
 if __name__ == "__main__":
     print("api 테스트")
     api = API()
