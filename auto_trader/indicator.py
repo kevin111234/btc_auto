@@ -36,7 +36,7 @@ class Indicator:
         rs = pd.Series(avg_gain_list, index=delta.index[n-1:]) / pd.Series(avg_loss_list, index=delta.index[n-1:])
         rsi = 100 - (100 / (1 + rs))
 
-        return rsi.iloc[-1]
+        return rsi.iloc[-1], rsi.iloc[-2]
 
     def calculate_volume_profile(self, num_bins=12, time_period=100):
         """

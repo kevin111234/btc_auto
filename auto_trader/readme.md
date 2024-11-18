@@ -19,7 +19,7 @@
 ```
 auto_trader/
 ├── config.py           # 설정 및 상수값
-├── api.py        # Upbit API 래퍼
+├── api.py              # 주요 기능 구현
 ├── indicator.py       # 기술적 지표 계산
 ├── notifier.py        # Slack 알림 관리
 ├── trader.py          # 주요 트레이딩 로직
@@ -30,48 +30,30 @@ auto_trader/
 
 #### config.py
 ```python
-class TradeConfig:
-    # API 키 설정
-    UPBIT_ACCESS_KEY: str
-    UPBIT_SECRET_KEY: str
-    SLACK_API_TOKEN: str
-    
-    # 채널 설정
-    TRADE_CHANNEL_ID: str    # 매매 기록용
-    ERROR_CHANNEL_ID: str    # 에러 로그용
-    REPORT_CHANNEL_ID: str   # 자산 보고용
-    
-    # 트레이딩 설정
-    TRADING_PAIRS: list      # 거래 코인 목록
-    POSITION_SIZE: float     # 기본 포지션 크기
-    STOP_LOSS: float        # 손절 기준 (5%)
-    TAKE_PROFIT: float      # 익절 기준 (5%)
-    
-    # RSI 설정
-    RSI_PERIOD: int = 14
-    RSI_OVERSOLD: int = 35   # 매수 기준
-    RSI_OVERBOUGHT: int = 65 # 매도 기준
+class TradeConfig
 ```
 
 #### api.py
-- Upbit API 통신 관리
-- 계좌 잔고, 주문, 가격 조회
-- API 에러 처리 및 재시도 로직
+- send_slack_message(channel_id, message)
+- get_current_price(ticker)
+- get_ohlcv(ticker, interval, count)
+- get_asset_info()
+- get_limit_amount(ticker)
 
 #### indicator.py
-- RSI 계산 및 매매 신호 생성
-- 포지션 크기 결정 로직
-- 매매 이력 추적 관리
+- calculate_rsi(ohlcv)
+- calculate_volume_profile(ohlcv, num_bins, time_period)
+- get_new_rsi(ohlcv)
+- get_volume_profile(ohlcv)
+- get_position_size(asset_info, ticker)
 
 #### notifier.py
-- 채널별 메시지 포맷 관리
-- 실시간 알림 전송
-- 정기 보고서 생성
-
-#### trader.py
-- 트레이딩 전략 실행
-- 자산 및 포지션 관리
-- 주문 실행 제어
+- create_error_report(error_type, error_message, additional_info)
+- report_error(error_type, error_message, additional_info)
+- create_asset_report(asset_info, limit_amounts)
+- report_asset_info(asset_info, limit_amounts)
+- create_trade_report(trade_info)
+- report_trade_info(trade_info)
 
 ## 3. 주요 프로세스 흐름
 
