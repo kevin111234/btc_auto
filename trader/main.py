@@ -1,6 +1,6 @@
 from config import Config
 from api import API
-from trader import Trader
+from trade import Trader
 from indicator import Indicator
 from notifier import Notifier
 from datetime import datetime
