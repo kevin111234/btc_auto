@@ -33,7 +33,6 @@ def main():
     if initial_asset_info is None:
         print("초기 자산 정보 조회 실패. 프로그램을 종료합니다.")
         return
-    notifier.send_asset_info(initial_asset_info, limit_amount)
     """
     형식: {'krw_balance': 1000000, 
     'coin_info': {'KRW-BTC': {'balance': 1.0, 'avg_price': 100000000, 'current_price': 100000000, 'value': 1000000, 'profit_rate': 0}, 
@@ -41,6 +40,7 @@ def main():
     'total_asset': 1000000}
     """
     limit_amount = api.get_limit_amount() # 형식: {'KRW-BTC': 10000, 'KRW-ETH': 10000}
+    notifier.send_asset_info(initial_asset_info, limit_amount)
 
     # 초기자산 데이터를 기준으로 매도 조건 설정
     initial_coin_balance = trader.initial_coin_balance(initial_asset_info)
