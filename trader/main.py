@@ -65,10 +65,9 @@ def main():
                 currency = ticker.split('-')[1]
                 df = pyupbit.get_ohlcv(ticker, interval="minute5", count=100)
                 indicator = Indicator(df)
-                rsi = indicator.rsi()
-                previous_rsi = indicator.previous_rsi()
-                current_price = pyupbit.get_current_price(ticker)
-                new_rsi = indicator.new_rsi(rsi)
+                rsi, previous_rsi = indicator.calculate_rsi()
+                current_price = api.get_current_price(ticker)
+                new_rsi = indicator.get_new_rsi()
 
                 # 매매신호 판단
                 buy_signal = trader.buy_signal(rsi, previous_rsi)

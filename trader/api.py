@@ -53,6 +53,13 @@ class API:
         except Exception as e:
             print(f"자산 정보 조회 중 에러 발생: {str(e)}")
             return None
+        
+    def get_current_price(self, ticker):
+        current_price = pyupbit.get_current_price(ticker)
+        if current_price is None:
+            print(f"현재가격 조회 중 에러 발생: {ticker}")
+            return 0
+        return current_price
 
     def get_limit_amount(self):
         try:
