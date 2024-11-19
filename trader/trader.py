@@ -31,7 +31,8 @@ class Trader:
     def initial_coin_balance(self, asset_info):
         initial_coin_balance = {}
         for ticker in self.tickers:
-            initial_coin_balance[ticker] = asset_info['coin_info'][ticker]['balance']
+            currency = ticker.split('-')[1]
+            initial_coin_balance[ticker] = asset_info['coin_info'][currency]['balance']
         return initial_coin_balance
 
     def has_initial_coin(self, initial_coin_balance):
