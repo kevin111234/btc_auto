@@ -1,5 +1,5 @@
-from trader.config import Config
-from trader.api import API
+from .config import Config
+from .api import API
 
 class Notifier:
     def __init__(self):

@@ -1,5 +1,3 @@
-
-
 class Trader:
     def __init__(self, upbit, slack, tickers):
         self.upbit = upbit

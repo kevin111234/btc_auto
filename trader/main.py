@@ -1,8 +1,8 @@
-from trader.config import Config
-from trader.api import API
-from trader.trader import Trader
-from trader.indicator import Indicator
-from trader.notifier import Notifier
+from .config import Config
+from .api import API
+from .trader import Trader
+from .indicator import Indicator
+from .notifier import Notifier
 from datetime import datetime
 import pyupbit
 import time
