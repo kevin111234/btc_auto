@@ -52,21 +52,21 @@ def main():
 
     while True:
         try:
+            asset_info = api.get_asset_info()
+            if asset_info is None:
+                print("자산현황 정보를 가져오는 데 실패했습니다.")
+                time.sleep(10)
+                continue
+
             current_time = datetime.now()
             if current_time.minute in [0, 30]:
                 if not status_sent:
-                    notifier.send_status_update(limit_amount,rsi_check, position_tracker)
+                    notifier.send_asset_info(asset_info, limit_amount, rsi_check, position_tracker)
                     status_sent = True
             else:
                 status_sent = False
             
             for ticker in TICKERS:
-                asset_info = api.get_asset_info()
-                if asset_info is None:
-                    print("자산현황 정보를 가져오는 데 실패했습니다.")
-                    time.sleep(10)
-                    continue
-                
                 currency = ticker.split('-')[1]
                 df = pyupbit.get_ohlcv(ticker, interval="minute5", count=100)
                 indicator = Indicator(df)

@@ -18,7 +18,7 @@ class Config:
         # coin_ticker
         self.coin_ticker = os.getenv("COIN_TICKER").split(" ")
         # 초기 자산
-        self.initial_asset = os.getenv("INITIAL_ASSET")
+        self.initial_asset = int(os.getenv("INITIAL_ASSET"))
         # 테스트 여부
         self.verify()
 
