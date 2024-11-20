@@ -14,7 +14,7 @@ UPBIT_SECRET_KEY = os.getenv('UPBIT_SECRET_KEY')
 SLACK_API_TOKEN = os.getenv('SLACK_API_TOKEN')
 SLACK_CHANNEL_ID = os.getenv('SLACK_CHANNEL_ID')
 COIN_TICKER = os.getenv('COIN_TICKER')
-INITIAL_ASSET = os.getenv('INITIAL_ASSET')
+INITIAL_ASSET = int(os.getenv('INITIAL_ASSET'))
 
 # 거래중인 코인 티커 목록
 TICKERS = ['KRW-BTC']
