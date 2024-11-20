@@ -92,6 +92,8 @@ def main():
                         print(message)
                         api.send_slack_message(slack_trade_channel, message)
                         has_initial_coin[currency] = False
+                        asset_info = api.get_asset_info()
+                        notifier.send_asset_info(asset_info, limit_amount, rsi_check, position_tracker)
 
                 # 매수 진행
                 if buy_signal and new_rsi not in rsi_check[ticker]:
@@ -123,6 +125,8 @@ RSI: {new_rsi:.2f}
 """
                                 print(message)
                                 api.send_slack_message(slack_trade_channel, message)
+                                asset_info = api.get_asset_info()
+                                notifier.send_asset_info(asset_info, limit_amount, rsi_check, position_tracker)
                     except Exception as e:
                         print(f"매수 주문 중 오류: {str(e)}")
                         api.send_slack_message(f"매수 주문 중 오류: {str(e)}", slack_error_channel)
@@ -151,7 +155,7 @@ RSI: {rsi:.2f}
 """
                                 api.send_slack_message(slack_trade_channel, message)
                                 asset_info = api.get_asset_info()
-                                notifier.send_asset_info(asset_info, limit_amount)
+                                notifier.send_asset_info(asset_info, limit_amount, rsi_check, position_tracker)
                     except Exception as e:
                         print(f"{ticker}의 매도 주문 중 오류: {str(e)}")
                         api.send_slack_message(f"{ticker}의 매도 주문 중 오류: {str(e)}", slack_error_channel)
