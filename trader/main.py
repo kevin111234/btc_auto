@@ -85,12 +85,12 @@ def main():
                     order = upbit.sell_market_order(ticker, initial_coin_balance)
                     message = f"매도 주문 완료. 현재가격: {current_price}"
                     print(message)
-                    api.send_slack_message(message, slack_trade_channel)
+                    api.send_slack_message(slack_trade_channel, message)
                     time.sleep(10)
                     if order:
                         message = f"초기 자산 매도 주문 체결\n수량: {initial_coin_balance:.8f}\nRSI: {rsi:.2f}"
                         print(message)
-                        api.send_slack_message(message, slack_trade_channel)
+                        api.send_slack_message(slack_trade_channel, message)
                         has_initial_coin[currency] = False
 
                 # 매수 진행
@@ -102,7 +102,7 @@ def main():
                             order = upbit.buy_market_order(ticker, position_size)
                             message = f"{ticker}매수 주문 완료. 현재가격: {current_price}"
                             print(message)
-                            api.send_slack_message(message, slack_trade_channel)
+                            api.send_slack_message(slack_trade_channel, message)
                             time.sleep(10)
                             if order:
                                 # 실제 체결된 정보 가져오기
@@ -122,7 +122,7 @@ RSI: {new_rsi:.2f}
 포지션 현황: {position_tracker[ticker]}
 """
                                 print(message)
-                                api.send_slack_message(message, slack_trade_channel)
+                                api.send_slack_message(slack_trade_channel, message)
                     except Exception as e:
                         print(f"매수 주문 중 오류: {str(e)}")
                         api.send_slack_message(f"매수 주문 중 오류: {str(e)}", slack_error_channel)
@@ -137,7 +137,7 @@ RSI: {new_rsi:.2f}
                             order = upbit.sell_market_order(ticker, sell_amount)
                             message = f"{ticker}매도 주문 완료. 현재가격: {current_price}"
                             print(message)
-                            api.send_slack_message(message, slack_trade_channel)
+                            api.send_slack_message(slack_trade_channel, message)
                             time.sleep(10)
                             if order:
                                 del position_tracker[ticker][new_rsi]
@@ -149,7 +149,7 @@ RSI: {new_rsi:.2f}
 RSI: {rsi:.2f}
 {rsi_check}
 """
-                                api.send_slack_message(message, slack_trade_channel)
+                                api.send_slack_message(slack_trade_channel, message)
                                 asset_info = api.get_asset_info()
                                 notifier.send_asset_info(asset_info, limit_amount)
                     except Exception as e:

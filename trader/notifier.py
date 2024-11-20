@@ -24,7 +24,7 @@ class Notifier:
 ──────────────"""
         message += f"""
 💵 총 자산: {asset_info['total_asset']:,.0f}원
-💵 전체 수익률: {((asset_info['total_asset'] - 200000) / 200000 * 100):.2f}%
+💵 전체 수익률: {((asset_info['total_asset'] - self.config.initial_asset) / self.config.initial_asset * 100):.2f}%
 ──────────────"""
         
         try:
@@ -60,7 +60,7 @@ class Notifier:
 ──────────────"""
         message += f"""
 💵 총 자산: {asset_info['total_asset']:,.0f}원
-💵 전체 수익률: {((asset_info['total_asset'] - 200000) / 200000 * 100):.2f}%
+💵 전체 수익률: {((asset_info['total_asset'] - self.config.initial_asset) / self.config.initial_asset * 100):.2f}%
 ──────────────"""
         
         try:
