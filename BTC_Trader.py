@@ -14,6 +14,7 @@ UPBIT_SECRET_KEY = os.getenv('UPBIT_SECRET_KEY')
 SLACK_API_TOKEN = os.getenv('SLACK_API_TOKEN')
 SLACK_CHANNEL_ID = os.getenv('SLACK_CHANNEL_ID')
 COIN_TICKER = os.getenv('COIN_TICKER')
+INITIAL_ASSET = os.getenv('INITIAL_ASSET')
 
 # 거래중인 코인 티커 목록
 TICKERS = ['KRW-BTC']
@@ -163,7 +164,7 @@ def send_asset_info(asset_info, limit_amount):
     message += f"""
 💵 총 자산: {asset_info['total_asset']:,.0f}원
 ⚖️ 코인 투자한도: {limit_amount:,.0f}원
-💵 전체 수익률: {((asset_info['total_asset'] - 200000) / 200000 * 100):.2f}%
+💵 전체 수익률: {((asset_info['total_asset'] - INITIAL_ASSET) / INITIAL_ASSET * 100):.2f}%
 """
 
     send_slack_message(message)
@@ -203,7 +204,7 @@ def send_status_update(limit_amount,rsi_check, position_traker):
     message += f"""
 💵 총 자산: {asset_info['total_asset']:,.0f}원
 ⚖️ 코인 투자한도: {limit_amount:,.0f}원
-💵 전체 수익률: {((asset_info['total_asset'] - 200000) / 200000 * 100):.2f}%
+💵 전체 수익률: {((asset_info['total_asset'] - INITIAL_ASSET) / INITIAL_ASSET * 100):.2f}%
 """
 
     # Slack으로 메시지 전송
