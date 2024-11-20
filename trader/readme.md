@@ -1,3 +1,65 @@
+이 코드는 RSI 지표를 활용해 자동으로 매수 및 매도를 수행하며, Slack을 통해 실시간 알림과 보고서를 제공합니다. 이를 통해 투자자는 매수/매도 신호와 자산 변동을 편리하게 확인할 수 있습니다.
+---
+
+### 실행 방법
+
+1. **환경 변수 설정**
+   - 프로젝트 루트 디렉토리에 `.env` 파일을 생성하고 아래 내용을 추가하세요:
+     ```plaintext
+     UPBIT_ACCESS_KEY=your_upbit_access_key
+     UPBIT_SECRET_KEY=your_upbit_secret_key
+     SLACK_API_TOKEN=your_slack_api_token
+     SLACK_TRADE_CHANNEL=your_trade_channel_id
+     SLACK_ERROR_CHANNEL=your_error_channel_id
+     SLACK_ASSET_CHANNEL=your_asset_channel_id
+     COIN_TICKER=KRW-BTC KRW-ETH  # 감시할 코인 티커를 공백으로 구분하여 입력
+     INITIAL_ASSET=1000000        # 초기 자산 값 (원 단위)
+     ```
+
+2. **필수 라이브러리 설치**
+   - Python 3.9 이상이 설치되어 있어야 합니다.
+   - 아래 명령어로 필요한 라이브러리를 설치하세요:
+     ```bash
+     pip install -r requirements.txt
+     ```
+   - `requirements.txt`가 없는 경우 아래와 같은 라이브러리를 설치해야 합니다:
+     ```bash
+     pip install pyupbit slack-sdk python-dotenv pandas
+     ```
+
+3. **코드 실행 전 점검**
+   - `.env` 파일이 제대로 설정되었는지 확인합니다.
+   - `config.py`의 `verify()` 메서드가 에러 없이 통과해야 합니다.
+   - 모든 Slack 채널 ID와 Upbit API 키가 유효한지 확인하세요.
+
+4. **프로그램 실행**
+   - 아래 명령어로 메인 파일을 실행합니다:
+     ```bash
+     python main.py
+     ```
+
+5. **Slack 설정 확인**
+   - 프로그램 실행 중 Slack으로 메시지가 정상적으로 전송되는지 확인합니다.
+   - 에러 발생 시, `SLACK_ERROR_CHANNEL`로 에러 메시지가 전송됩니다.
+
+6. **로그 및 디버깅**
+   - 실행 도중 발생하는 에러 메시지는 콘솔에 출력됩니다.
+   - 에러 로그를 확인하고 환경 변수나 설정값을 수정하세요.
+
+7. **정상 작동 확인**
+   - 프로그램이 실행되면 30분 간격으로 자산 현황이 Slack에 보고됩니다.
+   - RSI 기반으로 매수/매도 신호가 감지되면 매매가 자동으로 수행됩니다.
+
+---
+
+### 실행 전 주의사항
+- Upbit API 키는 반드시 읽기/쓰기 권한이 필요합니다.
+- 테스트 환경에서 충분히 시뮬레이션한 뒤 실거래에 사용하세요.
+- Slack API 토큰 및 채널 ID는 정확히 입력해야 정상 작동합니다.
+- 모든 투자의 책임은 본인에게 있습니다.
+
+---
+
 **config.py**
 - 환경변수 설정
 - 호출 시 from config import Config
