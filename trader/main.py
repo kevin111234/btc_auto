@@ -100,7 +100,7 @@ def main():
                     asset_info = api.get_asset_info()
                     position_size = trader.position_size(new_rsi)*limit_amount[ticker]
                     try:
-                        if position_size > 0 and asset_info['krw_balance'] >= position_size:
+                        if position_size > 0 and asset_info['krw_balance'] >= position_size and asset_info['krw_balance']*position_size > 5000:
                             order = upbit.buy_market_order(ticker, position_size)
                             message = f"{ticker}매수 주문 완료. 현재가격: {current_price}"
                             print(message)
