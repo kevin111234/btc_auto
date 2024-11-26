@@ -159,6 +159,26 @@ RSI: {rsi:.2f}
                     except Exception as e:
                         print(f"{ticker}의 매도 주문 중 오류: {str(e)}")
                         api.send_slack_message(f"{ticker}의 매도 주문 중 오류: {str(e)}", slack_error_channel)
+
+                elif current_price < asset_info['coin_info'][currency]['avg_price'] * 0.98:
+                    print(f"{ticker}의 손실이 2% 이상 발생했습니다. 매도 주문 진행중...")
+                    sell_amount = asset_info['coin_info'][currency]['balance']
+                    order = upbit.sell_market_order(ticker, sell_amount)
+                    message = f"{ticker}매도 주문 완료. 현재가격: {current_price}"
+                    print(message)
+                    api.send_slack_message(slack_trade_channel, message)
+                    time.sleep(10)
+                    if order:
+                        position_tracker[ticker] = {}
+                        rsi_check[ticker] = []
+                        message = f"""
+{ticker} 손절매 완료
+포지션 초기화 완료
+"""
+                        api.send_slack_message(slack_trade_channel, message)
+                        asset_info = api.get_asset_info()
+                        notifier.send_asset_info(asset_info, limit_amount, rsi_check, position_tracker)
+
                 else:
                     print(f"{ticker}의 매수/매도 신호가 없습니다. 기회 탐색중... rsi: {rsi}")
 
