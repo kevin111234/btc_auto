@@ -160,8 +160,8 @@ RSI: {rsi:.2f}
                         print(f"{ticker}의 매도 주문 중 오류: {str(e)}")
                         api.send_slack_message(f"{ticker}의 매도 주문 중 오류: {str(e)}", slack_error_channel)
 
-                elif current_price < asset_info['coin_info'][currency]['avg_price'] * 0.98:
-                    print(f"{ticker}의 손실이 2% 이상 발생했습니다. 매도 주문 진행중...")
+                elif current_price < asset_info['coin_info'][currency]['avg_price'] * config.stop_loss:
+                    print(f"{ticker}의 손실이 {config.stop_loss * 100}% 이상 발생했습니다. 매도 주문 진행중...")
                     sell_amount = asset_info['coin_info'][currency]['balance']
                     order = upbit.sell_market_order(ticker, sell_amount)
                     message = f"{ticker}매도 주문 완료. 현재가격: {current_price}"

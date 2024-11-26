@@ -19,6 +19,8 @@ class Config:
         self.coin_ticker = os.getenv("COIN_TICKER").split(" ")
         # 초기 자산
         self.initial_asset = int(os.getenv("INITIAL_ASSET"))
+        # 손절 손실률
+        self.stop_loss = float(os.getenv("STOP_LOSS"))
         # 테스트 여부
         self.verify()
 
@@ -35,6 +37,10 @@ class Config:
             raise ValueError("SLACK_ASSET_CHANNEL이 설정되지 않았습니다")
         if not self.coin_ticker:
             raise ValueError("COIN_TICKER가 설정되지 않았습니다")
+        if not self.initial_asset:
+            raise ValueError("INITIAL_ASSET가 설정되지 않았습니다")
+        if not self.stop_loss:
+            raise ValueError("STOP_LOSS가 설정되지 않았습니다")
 
 if __name__ == "__main__":
     print("config 테스트")
