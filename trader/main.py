@@ -85,7 +85,7 @@ def main():
                 # 초기 자산 정리
                 initial_avg_price = initial_asset_info['coin_info'][currency]['avg_price']
                 initial_profit_rate = ((current_price - initial_avg_price) / initial_avg_price * 100) if initial_avg_price > 0 else 0
-                if has_initial_coin and rsi >= 70 and initial_profit_rate >= 1.0 and previous_rsi > rsi:
+                if has_initial_coin and rsi >= 70 and initial_profit_rate >= 1.0 and previous_rsi > rsi+1:
                     order = upbit.sell_market_order(ticker, initial_coin_balance)
                     message = f"매도 주문 완료. 현재가격: {current_price}"
                     print(message)
