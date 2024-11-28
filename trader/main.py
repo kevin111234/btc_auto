@@ -47,7 +47,7 @@ def main():
     initial_coin_balance = trader.initial_coin_balance(initial_asset_info)
     has_initial_coin = trader.has_initial_coin(initial_coin_balance)
     for ticker in TICKERS:
-        if has_initial_coin[ticker]:
+        if ticker in has_initial_coin and has_initial_coin[ticker]:
             rsi_check[ticker].append(35)
 
     notifier.send_asset_info(initial_asset_info, limit_amount, rsi_check, position_tracker)
@@ -85,7 +85,7 @@ def main():
                 # 초기 자산 정리
                 initial_avg_price = initial_asset_info['coin_info'][currency]['avg_price']
                 initial_profit_rate = ((current_price - initial_avg_price) / initial_avg_price * 100) if initial_avg_price > 0 else 0
-                if has_initial_coin and rsi >= 70 and initial_profit_rate >= 1.0 and previous_rsi > rsi+1:
+                if has_initial_coin and rsi >= 70 and initial_profit_rate >= 1.0 and previous_rsi > rsi:
                     order = upbit.sell_market_order(ticker, initial_coin_balance)
                     message = f"매도 주문 완료. 현재가격: {current_price}"
                     print(message)
