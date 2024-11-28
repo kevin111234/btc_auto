@@ -135,7 +135,7 @@ RSI: {new_rsi:.2f}
                 elif sell_signal:
                     try:
                         asset_info = api.get_asset_info()
-                        sell_amount = position_tracker[ticker][new_rsi]
+                        sell_amount = asset_info['coin_info'][currency]['balance']
 
                         if sell_amount > 0:
                             order = upbit.sell_market_order(ticker, sell_amount)
