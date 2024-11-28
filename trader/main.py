@@ -81,7 +81,7 @@ def main():
                 # 초기 자산 정리
                 initial_avg_price = initial_asset_info['coin_info'][currency]['avg_price']
                 initial_profit_rate = ((current_price - initial_avg_price) / initial_avg_price * 100) if initial_avg_price > 0 else 0
-                if has_initial_coin and rsi >= 70 and initial_profit_rate >= 0.5 :
+                if has_initial_coin and rsi >= 70 and initial_profit_rate >= 1.0 and previous_rsi > rsi+1:
                     order = upbit.sell_market_order(ticker, initial_coin_balance)
                     message = f"매도 주문 완료. 현재가격: {current_price}"
                     print(message)
@@ -132,7 +132,7 @@ RSI: {new_rsi:.2f}
                         api.send_slack_message(f"매수 주문 중 오류: {str(e)}", slack_error_channel)
 
                 # 매도 진행
-                elif sell_signal and new_rsi in rsi_check[ticker]:
+                elif sell_signal:
                     try:
                         asset_info = api.get_asset_info()
                         sell_amount = position_tracker[ticker][new_rsi]
@@ -144,8 +144,8 @@ RSI: {new_rsi:.2f}
                             api.send_slack_message(slack_trade_channel, message)
                             time.sleep(10)
                             if order:
-                                del position_tracker[ticker][new_rsi]
-                                rsi_check[ticker].remove(new_rsi)
+                                position_tracker[ticker] = {}
+                                rsi_check[ticker] = []
 
                                 message = f"""
 {ticker}매도 주문 체결

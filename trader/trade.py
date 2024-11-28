@@ -45,10 +45,10 @@ class Trader:
 
 # 매매신호 판단
     def buy_signal(self, rsi, previous_rsi):
-        return rsi <= 35 and previous_rsi <= rsi
+        return rsi <= 35 and previous_rsi < rsi-1
     
     def sell_signal(self, rsi, previous_rsi, profit_rate):
-        return rsi >= 65 and previous_rsi >= rsi and profit_rate >= 0.5
+        return rsi >= 70 and previous_rsi > rsi+1 and profit_rate >= 1.0
     
     def position_size(self, new_rsi):
         if new_rsi == 20:
