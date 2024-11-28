@@ -42,11 +42,15 @@ def main():
     'total_asset': 1000000}
     """
     limit_amount = api.get_limit_amount() # 형식: {'KRW-BTC': 10000, 'KRW-ETH': 10000}
-    notifier.send_asset_info(initial_asset_info, limit_amount)
 
     # 초기자산 데이터를 기준으로 매도 조건 설정
     initial_coin_balance = trader.initial_coin_balance(initial_asset_info)
     has_initial_coin = trader.has_initial_coin(initial_coin_balance)
+    for ticker in TICKERS:
+        if has_initial_coin[ticker]:
+            rsi_check[ticker].append(35)
+
+    notifier.send_asset_info(initial_asset_info, limit_amount, rsi_check, position_tracker)
 
     status_sent = False
 
