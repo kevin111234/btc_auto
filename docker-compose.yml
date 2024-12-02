@@ -1,10 +1,11 @@
 version: "3.8"
 services:
   btc-auto:
-    image: python-dev
     build:
       context: .            # Dockerfile이 위치한 디렉토리
     volumes:
-      - C:\Users\woghd\Desktop\projects\btc_auto:/app    # 로컬 디렉토리(local_dir)를 컨테이너 디렉토리(/app)에 마운트
+      - /c/Users/woghd/Desktop/projects/btc_auto:/app
     working_dir: /app       # 컨테이너 내부 작업 디렉토리 설정
-    command: bash           # 기본 실행 명령어
+    command: bash           # 개발 컨테이너용 Bash 쉘 실행
+    tty: true               # TTY 모드 활성화
+    stdin_open: true        # 표준 입력 활성화 (VSCode 연결 지원)
