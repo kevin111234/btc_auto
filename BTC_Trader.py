@@ -9,12 +9,12 @@ from datetime import datetime
 
 # 환경변수 설정
 load_dotenv()
-UPBIT_ACCESS_KEY = os.getenv('UPBIT_ACCESS_KEY')
-UPBIT_SECRET_KEY = os.getenv('UPBIT_SECRET_KEY')
-SLACK_API_TOKEN = os.getenv('SLACK_API_TOKEN')
-SLACK_CHANNEL_ID = os.getenv('SLACK_CHANNEL_ID')
-COIN_TICKER = os.getenv('COIN_TICKER')
-INITIAL_ASSET = int(os.getenv('INITIAL_ASSET'))
+UPBIT_ACCESS_KEY = os.getenv('UPBIT_ACCESS_KEY') # 업비트 api 키
+UPBIT_SECRET_KEY = os.getenv('UPBIT_SECRET_KEY') # 업비트 api 키
+SLACK_API_TOKEN = os.getenv('SLACK_API_TOKEN')   # slack 알림 봇을 위한 api 키
+SLACK_CHANNEL_ID = os.getenv('SLACK_CHANNEL_ID') # 알림을 보낼 채널 ID
+COIN_TICKER = os.getenv('COIN_TICKER')           # 거래하고자 하는 코인 ex) KRW-BTC
+INITIAL_ASSET = int(os.getenv('INITIAL_ASSET'))  # 초기 시드머니(수익률 계산용)
 
 # 거래중인 코인 티커 목록
 TICKERS = ['KRW-BTC']
